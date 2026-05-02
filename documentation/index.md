@@ -24,6 +24,7 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Auditoria base de modelos com `owen-it/laravel-auditing`, driver `database` e tabela `audits`.
 - Auditoria operacional com dados de sessao/acesso em tokens Sanctum e eventos persistidos em `user_access_logs`.
 - Infraestrutura de upload de imagem via CDN externa com persistencia de retorno em `files`.
+- Upload de avatar com tratamento explicito para falhas de CDN, retornando erro HTTP `503` com mensagem JSON em vez de `500` generico.
 - Seeds iniciais para `admin@admin.com` e `editor@admin.com`.
 
 ## Validacao recomendada

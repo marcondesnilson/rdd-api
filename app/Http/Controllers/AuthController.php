@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdateMeRequest;
+use App\Http\Requests\UploadAvatarRequest;
 use App\Http\Resources\SessionUserResource;
 use App\Models\User;
 use App\Models\UserAccessLog;
 use App\Services\AuditTrail;
+use App\Services\CdnFileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,7 +19,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly AuditTrail $auditTrail) {}
+    public function __construct(
+        private readonly AuditTrail $auditTrail,
+        private readonly CdnFileUploadService $cdnFileUploadService,
+    ) {}
 
     public function login(LoginRequest $request): JsonResponse
     {
@@ -77,6 +82,7 @@ class AuthController extends Controller
         $profileMap = [
             'headline' => 'headline',
             'bio' => 'bio',
+            'avatarUrl' => 'avatar_url',
             'phone' => 'phone',
             'language' => 'language',
         ];
@@ -126,6 +132,39 @@ class AuthController extends Controller
         return response()->json([
             'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
         ]);
+    }
+
+    public function uploadAvatar(UploadAvatarRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $uploaded = $this->cdnFileUploadService->uploadAndStore($request->file('file'));
+
+        $baseUrl = rtrim((string) config('services.cdn_upload.base_url'), '/');
+        $publicUrl = '/'.ltrim((string) $uploaded->public_url, '/');
+        $avatarUrl = $baseUrl.$publicUrl;
+
+        $profile = $user->profile()->firstOrCreate([], [
+            'initials' => $this->initialsFor($user->name),
+            'headline' => 'Membro da República',
+        ]);
+        $profile->avatar_url = $avatarUrl;
+        $profile->save();
+
+        $this->auditTrail->record($request, 'account.avatar_uploaded', $user, metadata: [
+            'fileId' => $uploaded->external_file_id,
+        ]);
+
+        return response()->json([
+            'avatarUrl' => $avatarUrl,
+            'file' => [
+                'id' => $uploaded->id,
+                'externalFileId' => $uploaded->external_file_id,
+                'originalFilename' => $uploaded->original_filename,
+                'publicUrl' => $uploaded->public_url,
+                'mimeType' => $uploaded->mime_type,
+                'size' => $uploaded->size,
+            ],
+        ], 201);
     }
 
     public function sessions(Request $request): JsonResponse
@@ -259,6 +298,7 @@ class AuthController extends Controller
             'auth.session_revoked' => 'Sessão encerrada',
             'auth.other_sessions_revoked' => 'Outras sessões encerradas',
             'account.updated' => 'Conta atualizada',
+            'account.avatar_uploaded' => 'Foto de perfil atualizada',
             default => 'Atividade registrada',
         };
     }

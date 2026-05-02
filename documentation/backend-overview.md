@@ -32,6 +32,7 @@ Rotas atuais:
 - `POST /auth/register`: cria cadastro publico como `membro` e retorna `{ user, token }`.
 - `GET /me`: retorna usuario autenticado via bearer token.
 - `PATCH /me`: atualiza dados editaveis de perfil/conta do usuario autenticado.
+- `POST /me/avatar`: recebe upload de imagem de perfil (multipart), publica no CDN e atualiza `avatar_url` do usuario.
 - `GET /me/sessions`: lista tokens/sessoes Sanctum do usuario autenticado.
 - `DELETE /me/sessions`: revoga todas as sessoes exceto a atual.
 - `DELETE /me/sessions/{id}`: revoga uma sessao especifica do usuario autenticado.
@@ -125,6 +126,13 @@ Fluxo:
 2. envia `X-API-Key` via header usando variavel de ambiente;
 3. valida resposta JSON (`success=true` e campos obrigatorios);
 4. persiste em `files`.
+
+Upload de avatar no produto:
+
+- endpoint autenticado: `POST /me/avatar`
+- validacao: apenas imagem (`jpeg`, `jpg`, `png`, `webp`, `gif`) ate 5MB
+- resposta inclui `avatarUrl` (URL absoluta para uso no frontend) e metadados do arquivo salvo
+- falhas de integracao/configuracao da CDN sao tratadas como indisponibilidade de servico, retornando JSON com `message` e status HTTP `503` (evita `500` generico no cliente).
 
 Campos persistidos do retorno:
 

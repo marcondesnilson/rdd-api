@@ -33,6 +33,7 @@ class UpdateMeRequest extends FormRequest
             ],
             'headline' => ['sometimes', 'nullable', 'string', 'max:255'],
             'bio' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'avatarUrl' => ['sometimes', 'nullable', 'url', 'max:500'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
             'language' => ['sometimes', 'required', 'string', Rule::in(['pt-BR', 'en', 'es'])],
             'publicProfile' => ['sometimes', 'boolean'],
