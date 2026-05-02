@@ -40,6 +40,7 @@ class PublicationResource extends JsonResource
                 'id' => $this->user?->id,
                 'name' => $this->user?->name,
                 'initials' => $this->user?->profile?->initials ?? 'RD',
+                'avatarUrl' => $this->user?->profile?->avatar_url,
                 'headline' => $this->user?->profile?->headline,
                 'role' => $this->user?->roleRecord?->role ?? 'membro',
             ],
