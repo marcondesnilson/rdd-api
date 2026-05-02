@@ -47,13 +47,14 @@ class TimelinePostController extends Controller
     public function store(StoreTimelinePostRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $resolvedMediaUrl = $this->resolveMediaUrl($data);
 
         $post = Publication::query()->create([
             'user_id' => $request->user()->id,
             'post_type' => 'timeline',
             'content_type' => $data['contentType'],
             'body' => $data['body'],
-            'media_url' => $data['mediaUrl'] ?? null,
+            'media_url' => $resolvedMediaUrl,
             'status' => 'published',
             'search_engine_index' => false,
             'published_at' => now(),
@@ -63,11 +64,43 @@ class TimelinePostController extends Controller
         $this->auditTrail->record($request, 'timeline.post_created', $request->user(), metadata: [
             'timelinePostId' => $post->id,
             'contentType' => $post->content_type,
+            'hasMedia' => $resolvedMediaUrl !== null,
         ]);
 
         return response()->json([
             'post' => TimelinePostResource::make($post),
         ], 201);
+    }
+
+    private function resolveMediaUrl(array $data): ?string
+    {
+        $mediaUrl = isset($data['mediaUrl']) && is_string($data['mediaUrl'])
+            ? trim($data['mediaUrl'])
+            : null;
+
+        if (! empty($mediaUrl)) {
+            return $mediaUrl;
+        }
+
+        if (($data['contentType'] ?? null) !== 'image') {
+            return null;
+        }
+
+        $fileIds = collect($data['fileIds'] ?? [])
+            ->filter(fn ($id) => is_string($id) && trim($id) !== '')
+            ->values();
+
+        if ($fileIds->isEmpty()) {
+            return null;
+        }
+
+        $firstImage = File::query()
+            ->whereIn('id', $fileIds)
+            ->where('mime_type', 'like', 'image/%')
+            ->latest()
+            ->first(['public_url']);
+
+        return $firstImage?->public_url;
     }
 
     public function profileTimeline(Request $request, User $user): JsonResponse

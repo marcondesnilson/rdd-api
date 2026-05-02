@@ -33,6 +33,7 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
   - `post_type=timeline`: postagens curtas para membros logados.
   - `post_type=publication`: materias longas/profissionais com rota publica para indexacao.
 - Filtro de formato por `content_type` (`text`, `image`, `video`, `link`).
+- `POST /timeline/posts` com `contentType=image` agora exige `mediaUrl` ou `fileIds`, valida ao menos uma imagem e autopreenche `media_url` usando o arquivo CDN vinculado quando necessario.
 - Recursos de autor em timeline/publicacoes agora retornam `author.avatarUrl` para renderizacao da foto de perfil no frontend.
 - Registros por publicacao:
   - `tags` + pivot `publication_tag`

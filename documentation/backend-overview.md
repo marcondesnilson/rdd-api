@@ -218,6 +218,13 @@ Resposta:
 - `body` (obrigatorio, max 1000)
 - `contentType` (obrigatorio: `text`, `image`, `video`, `link`)
 - `mediaUrl` (opcional)
+- `fileIds` (opcional, array de IDs em `files`)
+
+Regra adicional para `contentType=image`:
+
+- exige `mediaUrl` ou pelo menos um `fileId`;
+- quando `fileIds` for informado, ao menos um arquivo deve ter MIME `image/*`;
+- se `mediaUrl` nao for enviado, o backend usa automaticamente o `public_url` da imagem vinculada.
 
 Resposta:
 
@@ -269,6 +276,12 @@ Upload de avatar no produto:
 - validacao: apenas imagem (`jpeg`, `jpg`, `png`, `webp`, `gif`) ate 5MB
 - resposta inclui `avatarUrl` (URL absoluta para uso no frontend) e metadados do arquivo salvo
 - falhas de integracao/configuracao da CDN sao tratadas como indisponibilidade de servico, retornando JSON com `message` e status HTTP `503` (evita `500` generico no cliente).
+- `POST /publications/files/upload` retorna `file.publicUrl` normalizado em URL absoluta quando a CDN responder caminho relativo.
+- Upload de arquivos de publicacao (via `POST /publications/files/upload`) sempre passa por `CdnClient` + `CdnFileUploadService` e persiste retorno em `files`.
+- Validacao de arquivo e contextual por `kind` (ate 20MB):
+  - `image` / `cover`: imagens (`jpg`, `jpeg`, `png`, `webp`, `gif`, `heic`, `heif`, `avif`);
+  - `video`: videos (`mp4`, `mov`, `avi`, `webm`, `m4v`);
+  - `attachment`: imagem ou video suportado.
 
 Campos persistidos do retorno:
 

@@ -121,13 +121,14 @@ class PublicationController extends Controller
     public function uploadFile(UploadPublicationFileRequest $request): JsonResponse
     {
         $stored = $this->cdnFileUploadService->uploadAndStore($request->file('file'));
+        $publicUrl = $this->normalizeCdnUrl((string) $stored->public_url);
 
         return response()->json([
             'file' => [
                 'id' => $stored->id,
                 'externalFileId' => $stored->external_file_id,
                 'originalFilename' => $stored->original_filename,
-                'publicUrl' => $stored->public_url,
+                'publicUrl' => $publicUrl,
                 'mimeType' => $stored->mime_type,
                 'size' => $stored->size,
                 'kind' => $request->validated('kind', 'attachment'),
@@ -374,5 +375,23 @@ class PublicationController extends Controller
         }
 
         return $publication;
+    }
+
+    private function normalizeCdnUrl(string $publicUrl): string
+    {
+        if ($publicUrl === '') {
+            return $publicUrl;
+        }
+
+        if (Str::startsWith($publicUrl, ['http://', 'https://'])) {
+            return $publicUrl;
+        }
+
+        $baseUrl = rtrim((string) config('services.cdn_upload.base_url'), '/');
+        if ($baseUrl === '') {
+            return $publicUrl;
+        }
+
+        return $baseUrl.'/'.ltrim($publicUrl, '/');
     }
 }

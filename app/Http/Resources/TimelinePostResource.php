@@ -16,15 +16,19 @@ class TimelinePostResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $this->resource->loadMissing(['user.profile', 'user.roleRecord']);
+        $this->resource->loadMissing(['user.profile', 'user.roleRecord', 'files.file']);
         $user = $request->user() ?? auth('sanctum')->user();
+        $fallbackMedia = $this->files
+            ->map(fn ($publicationFile) => $publicationFile->file?->public_url)
+            ->first(fn ($publicUrl) => is_string($publicUrl) && trim($publicUrl) !== '');
+        $mediaUrl = $this->media_url ?: $fallbackMedia;
 
         return [
             'id' => $this->id,
             'slug' => $this->slug,
             'body' => $this->body,
             'contentType' => $this->content_type,
-            'mediaUrl' => $this->media_url,
+            'mediaUrl' => $mediaUrl,
             'visibility' => 'members',
             'likesCount' => $this->likes_count,
             'commentsCount' => $this->comments_count,
