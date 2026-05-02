@@ -163,11 +163,25 @@ class PublicationController extends Controller
     public function like(Request $request, string $publicationRef): JsonResponse
     {
         $publication = $this->resolvePublication($publicationRef);
-        DB::table('publication_likes')->insertOrIgnore([
-            'publication_id' => $publication->id,
-            'user_id' => $request->user()->id,
-            'created_at' => now(),
-        ]);
+        $userId = $request->user()->id;
+
+        $restored = DB::table('publication_likes')
+            ->where('publication_id', $publication->id)
+            ->where('user_id', $userId)
+            ->whereNotNull('deleted_at')
+            ->update([
+                'deleted_at' => null,
+            ]);
+
+        if ($restored === 0) {
+            DB::table('publication_likes')->insertOrIgnore([
+                'publication_id' => $publication->id,
+                'user_id' => $userId,
+                'created_at' => now(),
+                'deleted_at' => null,
+            ]);
+        }
+
         $publication->likes_count = PublicationLike::query()->where('publication_id', $publication->id)->count();
         $publication->save();
 
@@ -177,10 +191,13 @@ class PublicationController extends Controller
     public function unlike(Request $request, string $publicationRef): JsonResponse
     {
         $publication = $this->resolvePublication($publicationRef);
-        PublicationLike::query()
+        DB::table('publication_likes')
             ->where('publication_id', $publication->id)
             ->where('user_id', $request->user()->id)
-            ->delete();
+            ->whereNull('deleted_at')
+            ->update([
+                'deleted_at' => now(),
+            ]);
         $publication->likes_count = PublicationLike::query()->where('publication_id', $publication->id)->count();
         $publication->save();
 

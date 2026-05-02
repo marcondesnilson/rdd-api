@@ -30,6 +30,7 @@ return new class extends Migration
             $table->string('user_agent', 1023)->nullable();
             $table->string('tags')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index([$morphPrefix.'_id', $morphPrefix.'_type']);
             $table->index(['auditable_type', 'auditable_id']);

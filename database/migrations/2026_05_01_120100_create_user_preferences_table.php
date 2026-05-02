@@ -20,6 +20,7 @@ return new class extends Migration
             $table->boolean('allow_messages')->default(true);
             $table->boolean('show_activity')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

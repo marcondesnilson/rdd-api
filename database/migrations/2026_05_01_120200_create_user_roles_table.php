@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignUlid('user_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('role')->default('membro')->index();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

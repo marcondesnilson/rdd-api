@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('document')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

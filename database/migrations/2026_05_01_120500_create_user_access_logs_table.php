@@ -25,6 +25,7 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamp('occurred_at')->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['target_user_id', 'occurred_at']);
             $table->index(['actor_user_id', 'occurred_at']);

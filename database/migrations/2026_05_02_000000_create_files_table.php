@@ -22,6 +22,7 @@ return new class extends Migration
             $table->boolean('is_public')->default(true);
             $table->boolean('is_converted')->default(true);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('mime_type');
         });

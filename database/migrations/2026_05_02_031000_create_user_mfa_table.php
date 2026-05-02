@@ -15,6 +15,7 @@ return new class extends Migration
             $table->boolean('enabled')->default(false);
             $table->timestamp('verified_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['user_id', 'method']);
             $table->index(['user_id', 'enabled']);

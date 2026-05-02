@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Auditable;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -17,7 +18,7 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 ])]
 class PublicationFile extends Model implements AuditableContract
 {
-    use Auditable, HasUlids;
+    use Auditable, HasUlids, SoftDeletes;
 
     protected $table = 'publication_files';
 
@@ -38,4 +39,3 @@ class PublicationFile extends Model implements AuditableContract
         return $this->belongsTo(File::class);
     }
 }
-

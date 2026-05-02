@@ -16,12 +16,15 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Composer ja instalou dependencias em `vendor`.
 - `.env` foi gerado pelo scaffold e `APP_KEY` foi configurada.
 - Banco padrao do scaffold: SQLite em `database/database.sqlite`.
+- Todas as tabelas das migrations possuem coluna `deleted_at` via `softDeletes`, incluindo tabelas auxiliares e pivots.
+- Todas as models Eloquent locais (`app/Models`) usam `SoftDeletes`, fazendo `delete()` operar como exclusao logica por padrao.
 - Tabela `users` mantida enxuta; dados de perfil, preferencias, roles e verificacao foram separados em migrations proprias.
 - Artefatos frontend do skeleton foram removidos para manter o projeto backend-only.
 - Autenticacao por bearer token com Laravel Sanctum.
 - CORS configurado para origens locais e previews Lovable.
 - Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, atualizacao administrativa de usuario, sessoes administrativas, logs operacionais por usuario e historico de auditoria de modelos.
 - Interacoes de engajamento (`curtir`, `comentar`, `salvar`) suportam lookup de publicacao por `slug` ou `id` (ULID), permitindo uso consistente em publicacoes longas e posts de timeline.
+- Ao curtir (`POST /publications/{publicationRef}/likes`), se ja existir um `publication_like` soft-deletado do mesmo usuario para a mesma publicacao, o registro e restaurado em vez de criar novo.
 - Recursos de `publications` e `timeline/posts` retornam estado por usuario autenticado: `liked` e `saved`, alem das contagens (`likesCount`, `commentsCount`).
 - Endpoint de seguranca da conta (`PATCH /me/security`) com validacao de senha atual para troca de senha e persistencia de MFA/notificacoes de seguranca.
 - Conteudo separado em duas trilhas na mesma tabela `publications`:

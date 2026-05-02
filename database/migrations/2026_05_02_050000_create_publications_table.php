@@ -30,6 +30,7 @@ return new class extends Migration
             $table->unsignedInteger('comments_count')->default(0);
             $table->timestamp('published_at')->nullable()->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['user_id', 'post_type', 'status']);
         });
@@ -39,12 +40,14 @@ return new class extends Migration
             $table->string('name', 120);
             $table->string('slug', 140)->unique();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('publication_tag', function (Blueprint $table): void {
             $table->foreignUlid('publication_id')->constrained('publications')->cascadeOnDelete();
             $table->foreignUlid('tag_id')->constrained('tags')->cascadeOnDelete();
             $table->timestamp('created_at')->nullable();
+            $table->softDeletes();
 
             $table->primary(['publication_id', 'tag_id']);
         });
@@ -56,6 +59,7 @@ return new class extends Migration
             $table->string('kind', 24)->default('attachment')->index(); // image | video | cover | attachment
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['publication_id', 'file_id']);
         });
@@ -68,6 +72,7 @@ return new class extends Migration
             $table->text('body');
             $table->timestamp('edited_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['publication_id', 'created_at']);
         });
@@ -76,6 +81,7 @@ return new class extends Migration
             $table->foreignUlid('publication_id')->constrained('publications')->cascadeOnDelete();
             $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamp('created_at')->nullable();
+            $table->softDeletes();
 
             $table->primary(['publication_id', 'user_id']);
         });
@@ -84,6 +90,7 @@ return new class extends Migration
             $table->foreignUlid('publication_id')->constrained('publications')->cascadeOnDelete();
             $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamp('created_at')->nullable();
+            $table->softDeletes();
 
             $table->primary(['publication_id', 'user_id']);
         });
@@ -96,6 +103,7 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
             $table->timestamp('viewed_at')->useCurrent()->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['publication_id', 'user_id']);
         });

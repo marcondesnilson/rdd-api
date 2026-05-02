@@ -15,12 +15,14 @@ return new class extends Migration
             $table->string('key')->primary();
             $table->mediumText('value');
             $table->bigInteger('expiration')->index();
+            $table->softDeletes();
         });
 
         Schema::create('cache_locks', function (Blueprint $table) {
             $table->string('key')->primary();
             $table->string('owner');
             $table->bigInteger('expiration')->index();
+            $table->softDeletes();
         });
     }
 

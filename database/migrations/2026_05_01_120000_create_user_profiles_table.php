@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('language', 12)->default('pt-BR');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
