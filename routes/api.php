@@ -23,6 +23,7 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::post('/admin/users', [AdminUserController::class, 'store']);
     Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
+    Route::patch('/admin/users/{user}', [AdminUserController::class, 'update']);
     Route::get('/admin/users/{user}/sessions', [AdminUserController::class, 'sessions']);
     Route::get('/admin/users/{user}/logs', [AdminUserController::class, 'logs']);
     Route::get('/admin/users/{user}/audits', [AdminUserController::class, 'audits']);

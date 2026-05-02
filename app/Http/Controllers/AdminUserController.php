@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAdminUserRequest;
+use App\Http\Requests\UpdateAdminUserRequest;
 use App\Http\Resources\SessionUserResource;
 use App\Models\User;
 use App\Models\UserAccessLog;
@@ -66,6 +67,52 @@ class AdminUserController extends Controller
         return response()->json([
             'user' => SessionUserResource::make($user->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
         ], 201);
+    }
+
+    public function update(UpdateAdminUserRequest $request, User $user): JsonResponse
+    {
+        $data = $request->validated();
+
+        $user->fill(array_filter([
+            'name' => $data['name'] ?? null,
+            'email' => $data['email'] ?? null,
+        ], fn ($value): bool => $value !== null));
+        $user->save();
+
+        if (array_key_exists('phone', $data)) {
+            $user->profile()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['phone' => $data['phone']],
+            );
+        }
+
+        if (array_key_exists('role', $data)) {
+            $user->roleRecord()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['role' => $data['role']],
+            );
+        }
+
+        if (array_key_exists('status', $data)) {
+            $verificationStatus = match ($data['status']) {
+                'pendente' => 'pending',
+                'suspenso' => 'rejected',
+                default => 'approved',
+            };
+
+            $user->verification()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['status' => $verificationStatus],
+            );
+        }
+
+        $this->auditTrail->record($request, 'admin.user_updated', $request->user(), $user, [
+            'updated' => array_keys($data),
+        ]);
+
+        return response()->json([
+            'user' => SessionUserResource::make($user->fresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
+        ]);
     }
 
     public function sessions(Request $request, User $user): JsonResponse

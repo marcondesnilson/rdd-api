@@ -42,6 +42,7 @@ Rotas atuais:
 - `GET /admin/users`: lista usuarios para `admin` e `editor`.
 - `POST /admin/users`: cria usuario para `admin` e `editor`.
 - `GET /admin/users/{id}`: detalha um usuario para `admin` e `editor`.
+- `PATCH /admin/users/{id}`: atualiza nome, email, telefone, papel e status administrativo do usuario.
 - `GET /admin/users/{id}/sessions`: lista sessoes Sanctum do usuario com IP, navegador e datas.
 - `GET /admin/users/{id}/logs`: lista os ultimos eventos de auditoria do usuario.
 - `GET /admin/users/{id}/audits`: lista historico de auditoria de modelo para o usuario, perfil, preferencias, papel e verificacao.
