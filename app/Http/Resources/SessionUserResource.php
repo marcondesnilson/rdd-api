@@ -18,7 +18,16 @@ class SessionUserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $this->resource->loadMissing(['profile', 'preferences', 'roleRecord', 'verification']);
+        $relations = ['profile', 'preferences', 'roleRecord', 'verification'];
+
+        if ($this->resource->exists) {
+            $relations[] = 'latestLoginLog';
+        }
+
+        $this->resource->loadMissing($relations);
+        $latestLoginLog = $this->resource->relationLoaded('latestLoginLog')
+            ? $this->resource->getRelation('latestLoginLog')
+            : null;
 
         return [
             'id' => $this->id,
@@ -42,6 +51,8 @@ class SessionUserResource extends JsonResource
                 'document' => $this->verification?->document,
                 'submittedAt' => $this->verification?->submitted_at?->toISOString(),
             ],
+            'lastLogin' => $latestLoginLog?->occurred_at?->toISOString(),
+            'lastIp' => $latestLoginLog?->ip_address,
             'createdAt' => $this->created_at?->toISOString(),
         ];
     }

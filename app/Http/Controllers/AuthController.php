@@ -7,6 +7,8 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdateMeRequest;
 use App\Http\Resources\SessionUserResource;
 use App\Models\User;
+use App\Models\UserAccessLog;
+use App\Services\AuditTrail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,18 +17,24 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly AuditTrail $auditTrail) {}
+
     public function login(LoginRequest $request): JsonResponse
     {
         $credentials = $request->validated();
         $user = User::query()->where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            $this->auditTrail->record($request, 'auth.login_failed', metadata: [
+                'email' => $credentials['email'],
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => ['As credenciais informadas são inválidas.'],
             ]);
         }
 
-        return $this->tokenResponse($user);
+        return $this->tokenResponse($user, $request, 'auth.login');
     }
 
     public function register(RegisterRequest $request): JsonResponse
@@ -47,7 +55,7 @@ class AuthController extends Controller
         $user->roleRecord()->create(['role' => 'membro']);
         $user->verification()->create(['status' => 'none']);
 
-        return $this->tokenResponse($user, 201);
+        return $this->tokenResponse($user, $request, 'auth.register', 201);
     }
 
     public function me(Request $request): JsonResponse
@@ -111,8 +119,12 @@ class AuthController extends Controller
         $profile->save();
         $preferences->save();
 
+        $this->auditTrail->record($request, 'account.updated', $user, metadata: [
+            'fields' => array_keys($data),
+        ]);
+
         return response()->json([
-            'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification'])),
+            'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
         ]);
     }
 
@@ -128,8 +140,8 @@ class AuthController extends Controller
                 'id' => (string) $token->id,
                 'name' => $token->name,
                 'device' => $this->deviceNameFromToken($token->name),
-                'browser' => 'Sessão API',
-                'ip' => null,
+                'browser' => $this->auditTrail->browserFromAgent($token->user_agent),
+                'ip' => $token->last_used_ip_address ?? $token->ip_address,
                 'location' => null,
                 'startedAt' => $token->created_at?->toISOString(),
                 'lastUsedAt' => $token->last_used_at?->toISOString(),
@@ -153,6 +165,18 @@ class AuthController extends Controller
                 'detail' => $this->deviceNameFromToken($token->name),
                 'at' => $token->created_at?->toISOString(),
             ]);
+        $auditActivity = UserAccessLog::query()
+            ->where('target_user_id', $user->id)
+            ->where('event', '!=', 'api.access')
+            ->latest('occurred_at')
+            ->limit(10)
+            ->get()
+            ->map(fn (UserAccessLog $log): array => [
+                'id' => $log->id,
+                'action' => $this->labelForAuditEvent($log->event),
+                'detail' => $log->ip_address,
+                'at' => $log->occurred_at?->toISOString(),
+            ]);
 
         return response()->json([
             'history' => collect([
@@ -162,7 +186,7 @@ class AuthController extends Controller
                     'detail' => $user->email,
                     'at' => $user->created_at?->toISOString(),
                 ],
-            ])->merge($tokenActivity)->values(),
+            ])->merge($auditActivity)->merge($tokenActivity)->values(),
         ]);
     }
 
@@ -176,7 +200,13 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $request->user()->tokens()->whereKey($tokenId)->delete();
+        $deleted = $request->user()->tokens()->whereKey($tokenId)->delete();
+
+        if ($deleted > 0) {
+            $this->auditTrail->record($request, 'auth.session_revoked', $request->user(), metadata: [
+                'tokenId' => $tokenId,
+            ]);
+        }
 
         return response()->json(['message' => 'Sessão encerrada.']);
     }
@@ -185,16 +215,22 @@ class AuthController extends Controller
     {
         $currentTokenId = $request->user()?->currentAccessToken()?->id;
 
-        $request->user()
+        $deleted = $request->user()
             ->tokens()
             ->when($currentTokenId, fn ($query) => $query->whereKeyNot($currentTokenId))
             ->delete();
+
+        $this->auditTrail->record($request, 'auth.other_sessions_revoked', $request->user(), metadata: [
+            'deleted' => $deleted,
+        ]);
 
         return response()->json(['message' => 'Outras sessões encerradas.']);
     }
 
     public function logout(Request $request): JsonResponse
     {
+        $this->auditTrail->record($request, 'auth.logout', $request->user());
+
         $request->user()?->currentAccessToken()?->delete();
 
         return response()->json([
@@ -202,12 +238,29 @@ class AuthController extends Controller
         ]);
     }
 
-    private function tokenResponse(User $user, int $status = 200): JsonResponse
+    private function tokenResponse(User $user, Request $request, string $event, int $status = 200): JsonResponse
     {
+        $newToken = $user->createToken('frontend:'.Str::uuid());
+        $this->auditTrail->attachSessionData($newToken->accessToken, $request);
+        $this->auditTrail->record($request, $event, $user, token: $newToken->accessToken);
+
         return response()->json([
-            'user' => SessionUserResource::make($user->load(['profile', 'preferences', 'roleRecord', 'verification'])),
-            'token' => $user->createToken('frontend:'.Str::uuid())->plainTextToken,
+            'user' => SessionUserResource::make($user->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
+            'token' => $newToken->plainTextToken,
         ], $status);
+    }
+
+    private function labelForAuditEvent(string $event): string
+    {
+        return match ($event) {
+            'auth.login' => 'Login realizado',
+            'auth.register' => 'Cadastro realizado',
+            'auth.logout' => 'Logout realizado',
+            'auth.session_revoked' => 'Sessão encerrada',
+            'auth.other_sessions_revoked' => 'Outras sessões encerradas',
+            'account.updated' => 'Conta atualizada',
+            default => 'Atividade registrada',
+        };
     }
 
     private function deviceNameFromToken(string $name): string

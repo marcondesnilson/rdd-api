@@ -2,12 +2,13 @@
 
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Middleware\RecordAuthenticatedAccess;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
     Route::get('/me/sessions', [AuthController::class, 'sessions']);
@@ -18,4 +19,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::post('/admin/users', [AdminUserController::class, 'store']);
+    Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
+    Route::get('/admin/users/{user}/sessions', [AdminUserController::class, 'sessions']);
+    Route::get('/admin/users/{user}/logs', [AdminUserController::class, 'logs']);
 });
