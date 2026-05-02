@@ -138,7 +138,8 @@ Essas credenciais sao apenas para desenvolvimento/local e devem ser trocadas ant
 
 ## Variaveis relevantes
 
-- `FRONTEND_URLS`: lista separada por virgulas com origens permitidas no CORS. Padrao local: `http://localhost:8080,http://localhost:8081`.
+- `FRONTEND_URLS`: lista separada por virgulas com origens permitidas no CORS. Padrao local: `http://localhost:8080,http://localhost:8081,https://republica-do-direito.lovable.app`.
+- CORS tambem aceita previews Lovable por padrao: `https://*.lovableproject.com` e `https://*.lovable.app`.
 
 ## Validacoes executadas
 
