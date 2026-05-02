@@ -71,6 +71,36 @@ class User extends Authenticatable implements AuditableContract
         return $this->hasMany(UserMfa::class);
     }
 
+    public function publications(): HasMany
+    {
+        return $this->hasMany(Publication::class)->where('post_type', 'publication');
+    }
+
+    public function timelinePosts(): HasMany
+    {
+        return $this->hasMany(Publication::class)->where('post_type', 'timeline');
+    }
+
+    public function publicationComments(): HasMany
+    {
+        return $this->hasMany(PublicationComment::class);
+    }
+
+    public function publicationLikes(): HasMany
+    {
+        return $this->hasMany(PublicationLike::class);
+    }
+
+    public function publicationSaves(): HasMany
+    {
+        return $this->hasMany(PublicationSave::class);
+    }
+
+    public function publicationViews(): HasMany
+    {
+        return $this->hasMany(PublicationView::class);
+    }
+
     public function actedAccessLogs(): HasMany
     {
         return $this->hasMany(UserAccessLog::class, 'actor_user_id');

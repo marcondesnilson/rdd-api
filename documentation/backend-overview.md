@@ -39,6 +39,12 @@ Rotas atuais:
 - `DELETE /me/sessions/{id}`: revoga uma sessao especifica do usuario autenticado.
 - `GET /me/activity`: retorna atividade basica derivada do banco, como criacao da conta e tokens criados.
 - `POST /auth/logout`: revoga o token atual.
+- `GET /publications`: lista publica de materias longas com status `published`.
+- `GET /publications/{slug}`: detalhe publico de materia longa publicada.
+- `POST /publications`: cria materia longa (draft ou pending_review) para `admin`, `editor`, `professor`, `advogado` e `aluno`.
+- `GET /timeline/posts`: feed de postagens curtas (somente autenticado).
+- `POST /timeline/posts`: publica texto curto na timeline (somente autenticado).
+- `GET /profiles/{id}/timeline-posts`: lista timeline de um perfil (somente autenticado).
 - `GET /admin/users`: lista usuarios para `admin` e `editor`.
 - `POST /admin/users`: cria usuario para `admin` e `editor`.
 - `GET /admin/users/{id}`: detalha um usuario para `admin` e `editor`.
@@ -135,6 +141,93 @@ Persistencia relacionada:
 - `personal_access_tokens`: tokens Sanctum com IP de criacao, user-agent e ultimo IP de uso.
 - `user_access_logs`: trilha de auditoria com ator, alvo, token, evento, metodo, caminho, status, IP, user-agent, metadata e data do evento.
 - `files`: retorno normalizado de uploads no CDN externo (`success`, `file_id`, nome original, URL publica relativa, MIME e tamanho).
+- `publications`: tabela unica para timeline e materia longa, diferenciando por:
+  - `post_type`: `timeline` ou `publication`
+  - `content_type`: `text`, `image`, `video`, `link`
+  alem de `slug`, `title`, `excerpt`, `content`, `body`, `status` e `search_engine_index`.
+- `tags`: catalogo de tags.
+- `publication_tag`: relacionamento N:N entre publicacoes e tags.
+- `publication_files`: vinculo entre publicacao e arquivos CDN (`files`) para imagem/video/upload.
+- `publication_comments`: comentarios com autor obrigatorio e suporte a resposta (`parent_id`).
+- `publication_likes`: likes por usuario (usuario obrigatorio).
+- `publication_saves`: itens salvos por usuario (usuario obrigatorio).
+- `publication_views`: visualizacoes com `user_id` opcional para visitantes anonimos.
+
+### Conteudo editorial
+
+`POST /publications` (autenticado com role permitida) aceita:
+
+- `title` (obrigatorio, max 180)
+- `excerpt` (obrigatorio, max 500)
+- `content` (obrigatorio, max 50000)
+- `tag` (opcional)
+- `coverUrl` (opcional)
+- `contentType` (opcional: `text`, `image`, `video`, `link`; default `text`)
+- `mediaUrl` (opcional)
+- `status` (opcional: `draft` ou `pending_review`; default `pending_review`)
+- `searchEngineIndex` (opcional, default `true`)
+
+Resposta:
+
+```json
+{
+  "publication": {
+    "id": "01...",
+    "slug": "titulo-da-materia",
+    "title": "Titulo da materia",
+    "excerpt": "Resumo",
+    "content": "Conteudo completo...",
+    "tag": "Direito Civil",
+    "coverUrl": null,
+    "status": "pending_review",
+    "searchEngineIndex": true,
+    "publishedAt": null,
+    "createdAt": "2026-05-02T05:00:00.000000Z",
+    "author": {
+      "id": "01...",
+      "name": "Usuario",
+      "initials": "US",
+      "headline": "Membro da Republica",
+      "role": "aluno"
+    }
+  }
+}
+```
+
+`GET /publications` e `GET /publications/{slug}` expõem apenas registros com `status=published`.
+
+`POST /timeline/posts` (autenticado) aceita:
+
+- `body` (obrigatorio, max 1000)
+- `contentType` (obrigatorio: `text`, `image`, `video`, `link`)
+- `mediaUrl` (opcional)
+
+Resposta:
+
+```json
+{
+  "post": {
+    "id": "01...",
+    "body": "Texto curto da timeline",
+    "visibility": "members",
+    "likesCount": 0,
+    "commentsCount": 0,
+    "createdAt": "2026-05-02T05:10:00.000000Z",
+    "author": {
+      "id": "01...",
+      "name": "Usuario",
+      "initials": "US",
+      "headline": "Membro da Republica",
+      "role": "aluno"
+    },
+    "publication": {
+      "slug": "titulo-da-materia",
+      "title": "Titulo da materia",
+      "tag": "Direito Civil"
+    }
+  }
+}
+```
 
 ### Upload de arquivos (CDN)
 

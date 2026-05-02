@@ -22,6 +22,15 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - CORS configurado para origens locais e previews Lovable.
 - Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, atualizacao administrativa de usuario, sessoes administrativas, logs operacionais por usuario e historico de auditoria de modelos.
 - Endpoint de seguranca da conta (`PATCH /me/security`) com validacao de senha atual para troca de senha e persistencia de MFA/notificacoes de seguranca.
+- Conteudo separado em duas trilhas na mesma tabela `publications`:
+  - `post_type=timeline`: postagens curtas para membros logados.
+  - `post_type=publication`: materias longas/profissionais com rota publica para indexacao.
+- Filtro de formato por `content_type` (`text`, `image`, `video`, `link`).
+- Registros por publicacao:
+  - `tags` + pivot `publication_tag`
+  - `publication_files` (arquivos de imagem/video via `files` da CDN)
+  - `publication_comments`, `publication_likes`, `publication_saves`, `publication_views`
+- `publication_views` aceita `user_id` nulo para visualizacao anonima (nao logado).
 - Endpoint de sessoes da conta (`GET /me/sessions`) retornando identificacao de dispositivo real baseada em `user_agent` (plataforma + tipo do dispositivo), alem de navegador e IP.
 - MFA normalizado em tabela dedicada `user_mfa`, com metodos iniciais `totp` e `certificate`.
 - Verificacao MFA no login via endpoint autenticado `POST /auth/mfa/verify`, validando codigo TOTP/credentialId persistidos.
