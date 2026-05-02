@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use OwenIt\Auditing\Auditable;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
 #[Fillable([
     'name',
@@ -21,10 +23,10 @@ use Laravel\Sanctum\HasApiTokens;
     'password',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements AuditableContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasUlids, Notifiable;
+    use Auditable, HasApiTokens, HasFactory, HasUlids, Notifiable;
 
     /**
      * Get the attributes that should be cast.

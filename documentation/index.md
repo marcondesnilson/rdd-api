@@ -20,8 +20,10 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Artefatos frontend do skeleton foram removidos para manter o projeto backend-only.
 - Autenticacao por bearer token com Laravel Sanctum.
 - CORS configurado para origens locais e previews Lovable.
-- Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, sessoes administrativas e logs de auditoria por usuario.
-- Auditoria com dados de sessao/acesso em tokens Sanctum e eventos persistidos em `user_access_logs`.
+- Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, sessoes administrativas, logs operacionais por usuario e historico de auditoria de modelos.
+- Auditoria base de modelos com `owen-it/laravel-auditing`, driver `database` e tabela `audits`.
+- Auditoria operacional com dados de sessao/acesso em tokens Sanctum e eventos persistidos em `user_access_logs`.
+- Infraestrutura de upload de imagem via CDN externa com persistencia de retorno em `files`.
 - Seeds iniciais para `admin@admin.com` e `editor@admin.com`.
 
 ## Validacao recomendada

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Auditable;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
 #[Fillable([
     'user_id',
@@ -13,8 +15,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'document',
     'submitted_at',
 ])]
-class UserVerification extends Model
+class UserVerification extends Model implements AuditableContract
 {
+    use Auditable;
+
+    /**
+     * @var list<string>
+     */
+    protected $auditExclude = [
+        'document',
+    ];
+
     protected function casts(): array
     {
         return [

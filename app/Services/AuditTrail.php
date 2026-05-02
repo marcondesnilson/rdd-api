@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserAccessLog;
+use App\Support\PublicIpAddress;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AuditTrail
 {
+    public function __construct(private readonly PublicIpAddress $publicIpAddress) {}
+
     /**
      * @param  array<string, mixed>  $metadata
      */
@@ -33,7 +36,7 @@ class AuditTrail
             'method' => $request->method(),
             'path' => '/'.ltrim($request->path(), '/'),
             'status_code' => $response?->getStatusCode(),
-            'ip_address' => $request->ip(),
+            'ip_address' => $this->ipAddress($request),
             'user_agent' => $this->userAgent($request),
             'metadata' => $metadata === [] ? null : $metadata,
             'occurred_at' => now(),
@@ -43,9 +46,9 @@ class AuditTrail
     public function attachSessionData(Model $token, Request $request): void
     {
         $token->forceFill([
-            'ip_address' => $request->ip(),
+            'ip_address' => $this->ipAddress($request),
             'user_agent' => $this->userAgent($request),
-            'last_used_ip_address' => $request->ip(),
+            'last_used_ip_address' => $this->ipAddress($request),
         ])->save();
     }
 
@@ -56,7 +59,7 @@ class AuditTrail
         }
 
         $token->forceFill([
-            'last_used_ip_address' => $request->ip(),
+            'last_used_ip_address' => $this->ipAddress($request),
         ])->save();
     }
 
@@ -80,5 +83,10 @@ class AuditTrail
         $userAgent = $request->userAgent();
 
         return $userAgent ? Str::limit($userAgent, 1000, '') : null;
+    }
+
+    private function ipAddress(Request $request): ?string
+    {
+        return $this->publicIpAddress->fromRequest($request, config('audit.ip.trusted_proxies', []));
     }
 }

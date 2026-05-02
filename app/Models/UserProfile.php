@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Auditable;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
 #[Fillable([
     'user_id',
@@ -15,8 +17,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'phone',
     'language',
 ])]
-class UserProfile extends Model
+class UserProfile extends Model implements AuditableContract
 {
+    use Auditable;
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

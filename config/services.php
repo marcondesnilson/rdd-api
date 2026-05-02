@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'cdn_upload' => [
+        'base_url' => env('CDN_UPLOAD_BASE_URL'),
+        'upload_path' => env('CDN_UPLOAD_PATH', '/upload'),
+        'api_key' => env('CDN_UPLOAD_API_KEY'),
+        'timeout' => env('CDN_UPLOAD_TIMEOUT', 20),
+        'connect_timeout' => env('CDN_UPLOAD_CONNECT_TIMEOUT', 10),
+    ],
+
 ];

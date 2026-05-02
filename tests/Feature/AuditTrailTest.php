@@ -98,4 +98,46 @@ class AuditTrailTest extends TestCase
                 'ip' => '203.0.113.20',
             ]);
     }
+
+    public function test_admin_can_inspect_model_audits(): void
+    {
+        config([
+            'audit.console' => true,
+            'audit.ip.trusted_proxies' => ['10.0.0.0/24'],
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->roleRecord()->update(['role' => 'admin']);
+        $adminToken = $admin->createToken('frontend:admin')->plainTextToken;
+
+        $response = $this
+            ->withToken($adminToken)
+            ->withServerVariables([
+                'REMOTE_ADDR' => '10.0.0.10',
+                'HTTP_CF_CONNECTING_IP' => '8.8.8.8',
+            ])
+            ->postJson('/admin/users', [
+                'name' => 'Auditado',
+                'email' => 'auditado@example.com',
+                'password' => 'secret123',
+                'role' => 'editor',
+            ])
+            ->assertCreated();
+
+        $createdUserId = $response->json('user.id');
+
+        $this
+            ->withToken($adminToken)
+            ->getJson("/admin/users/{$createdUserId}/audits")
+            ->assertOk()
+            ->assertJsonStructure([
+                'audits' => [
+                    '*' => ['id', 'event', 'auditableType', 'auditableId', 'actor', 'oldValues', 'newValues', 'ip', 'userAgent', 'url', 'createdAt'],
+                ],
+            ])
+            ->assertJsonFragment([
+                'event' => 'created',
+                'ip' => '8.8.8.8',
+            ]);
+    }
 }

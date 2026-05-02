@@ -10,6 +10,7 @@ use App\Services\AuditTrail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use OwenIt\Auditing\Models\Audit as AuditModel;
 
 class AdminUserController extends Controller
 {
@@ -120,6 +121,55 @@ class AdminUserController extends Controller
             ->values();
 
         return response()->json(['logs' => $logs]);
+    }
+
+    public function audits(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeAdminAccess($request);
+
+        $user->loadMissing(['profile', 'preferences', 'roleRecord', 'verification']);
+
+        $auditableKeys = collect([
+            [User::class, $user->id],
+            [$user->profile?->getMorphClass(), $user->profile?->getKey()],
+            [$user->preferences?->getMorphClass(), $user->preferences?->getKey()],
+            [$user->roleRecord?->getMorphClass(), $user->roleRecord?->getKey()],
+            [$user->verification?->getMorphClass(), $user->verification?->getKey()],
+        ])->filter(fn (array $auditable): bool => filled($auditable[0]) && filled($auditable[1]));
+
+        $audits = AuditModel::query()
+            ->where(function ($query) use ($auditableKeys): void {
+                foreach ($auditableKeys as [$type, $id]) {
+                    $query->orWhere(function ($query) use ($type, $id): void {
+                        $query
+                            ->where('auditable_type', $type)
+                            ->where('auditable_id', (string) $id);
+                    });
+                }
+            })
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->map(fn (AuditModel $audit): array => [
+                'id' => (string) $audit->id,
+                'event' => $audit->event,
+                'auditableType' => class_basename($audit->auditable_type),
+                'auditableId' => (string) $audit->auditable_id,
+                'actor' => $audit->user ? [
+                    'id' => (string) $audit->user->getKey(),
+                    'name' => $audit->user->name,
+                    'email' => $audit->user->email,
+                ] : null,
+                'oldValues' => $audit->old_values,
+                'newValues' => $audit->new_values,
+                'ip' => $audit->ip_address,
+                'userAgent' => $audit->user_agent,
+                'url' => $audit->url,
+                'createdAt' => $audit->created_at?->toISOString(),
+            ])
+            ->values();
+
+        return response()->json(['audits' => $audits]);
     }
 
     private function authorizeAdminAccess(Request $request): void
