@@ -17,6 +17,7 @@ class PublicationResource extends JsonResource
     public function toArray(Request $request): array
     {
         $this->resource->loadMissing(['user.profile', 'user.roleRecord']);
+        $user = $request->user() ?? auth('sanctum')->user();
 
         return [
             'id' => $this->id,
@@ -34,6 +35,8 @@ class PublicationResource extends JsonResource
             'searchEngineIndex' => (bool) $this->search_engine_index,
             'likesCount' => $this->likes_count,
             'commentsCount' => $this->comments_count,
+            'liked' => $user !== null ? $this->likes()->where('user_id', $user->id)->exists() : false,
+            'saved' => $user !== null ? $this->saves()->where('user_id', $user->id)->exists() : false,
             'publishedAt' => $this->published_at?->toISOString(),
             'createdAt' => $this->created_at?->toISOString(),
             'author' => [

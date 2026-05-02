@@ -12,7 +12,7 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/publications', [PublicationController::class, 'index']);
 Route::get('/publications/{publication:slug}', [PublicationController::class, 'show']);
 Route::post('/publications/{publication:slug}/views', [PublicationController::class, 'view']);
-Route::get('/publications/{publication:slug}/comments', [PublicationController::class, 'comments']);
+Route::get('/publications/{publicationRef}/comments', [PublicationController::class, 'comments']);
 
 Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
@@ -27,11 +27,11 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/publications', [PublicationController::class, 'store']);
     Route::post('/publications/files/upload', [PublicationController::class, 'uploadFile']);
-    Route::post('/publications/{publication:slug}/comments', [PublicationController::class, 'storeComment']);
-    Route::post('/publications/{publication:slug}/likes', [PublicationController::class, 'like']);
-    Route::delete('/publications/{publication:slug}/likes', [PublicationController::class, 'unlike']);
-    Route::post('/publications/{publication:slug}/saves', [PublicationController::class, 'savePublication']);
-    Route::delete('/publications/{publication:slug}/saves', [PublicationController::class, 'unsavePublication']);
+    Route::post('/publications/{publicationRef}/comments', [PublicationController::class, 'storeComment']);
+    Route::post('/publications/{publicationRef}/likes', [PublicationController::class, 'like']);
+    Route::delete('/publications/{publicationRef}/likes', [PublicationController::class, 'unlike']);
+    Route::post('/publications/{publicationRef}/saves', [PublicationController::class, 'savePublication']);
+    Route::delete('/publications/{publicationRef}/saves', [PublicationController::class, 'unsavePublication']);
 
     Route::get('/timeline/posts', [TimelinePostController::class, 'index']);
     Route::post('/timeline/posts', [TimelinePostController::class, 'store']);

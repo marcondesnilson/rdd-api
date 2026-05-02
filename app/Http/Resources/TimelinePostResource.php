@@ -17,15 +17,19 @@ class TimelinePostResource extends JsonResource
     public function toArray(Request $request): array
     {
         $this->resource->loadMissing(['user.profile', 'user.roleRecord']);
+        $user = $request->user() ?? auth('sanctum')->user();
 
         return [
             'id' => $this->id,
+            'slug' => $this->slug,
             'body' => $this->body,
             'contentType' => $this->content_type,
             'mediaUrl' => $this->media_url,
             'visibility' => 'members',
             'likesCount' => $this->likes_count,
             'commentsCount' => $this->comments_count,
+            'liked' => $user !== null ? $this->likes()->where('user_id', $user->id)->exists() : false,
+            'saved' => $user !== null ? $this->saves()->where('user_id', $user->id)->exists() : false,
             'createdAt' => $this->created_at?->toISOString(),
             'author' => [
                 'id' => $this->user?->id,

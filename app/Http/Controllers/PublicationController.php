@@ -111,8 +111,9 @@ class PublicationController extends Controller
         ], 201);
     }
 
-    public function comments(Publication $publication): JsonResponse
+    public function comments(string $publicationRef): JsonResponse
     {
+        $publication = $this->resolvePublication($publicationRef);
         $comments = PublicationComment::query()
             ->with('user.profile')
             ->where('publication_id', $publication->id)
@@ -135,8 +136,9 @@ class PublicationController extends Controller
         return response()->json(['comments' => $comments]);
     }
 
-    public function storeComment(StorePublicationCommentRequest $request, Publication $publication): JsonResponse
+    public function storeComment(StorePublicationCommentRequest $request, string $publicationRef): JsonResponse
     {
+        $publication = $this->resolvePublication($publicationRef);
         $data = $request->validated();
 
         $comment = PublicationComment::query()->create([
@@ -158,12 +160,12 @@ class PublicationController extends Controller
         ], 201);
     }
 
-    public function like(Request $request, Publication $publication): JsonResponse
+    public function like(Request $request, string $publicationRef): JsonResponse
     {
-        PublicationLike::query()->firstOrCreate([
+        $publication = $this->resolvePublication($publicationRef);
+        DB::table('publication_likes')->insertOrIgnore([
             'publication_id' => $publication->id,
             'user_id' => $request->user()->id,
-        ], [
             'created_at' => now(),
         ]);
         $publication->likes_count = PublicationLike::query()->where('publication_id', $publication->id)->count();
@@ -172,8 +174,9 @@ class PublicationController extends Controller
         return response()->json(['liked' => true, 'likesCount' => $publication->likes_count]);
     }
 
-    public function unlike(Request $request, Publication $publication): JsonResponse
+    public function unlike(Request $request, string $publicationRef): JsonResponse
     {
+        $publication = $this->resolvePublication($publicationRef);
         PublicationLike::query()
             ->where('publication_id', $publication->id)
             ->where('user_id', $request->user()->id)
@@ -184,20 +187,21 @@ class PublicationController extends Controller
         return response()->json(['liked' => false, 'likesCount' => $publication->likes_count]);
     }
 
-    public function savePublication(Request $request, Publication $publication): JsonResponse
+    public function savePublication(Request $request, string $publicationRef): JsonResponse
     {
-        PublicationSave::query()->firstOrCreate([
+        $publication = $this->resolvePublication($publicationRef);
+        DB::table('publication_saves')->insertOrIgnore([
             'publication_id' => $publication->id,
             'user_id' => $request->user()->id,
-        ], [
             'created_at' => now(),
         ]);
 
         return response()->json(['saved' => true]);
     }
 
-    public function unsavePublication(Request $request, Publication $publication): JsonResponse
+    public function unsavePublication(Request $request, string $publicationRef): JsonResponse
     {
+        $publication = $this->resolvePublication($publicationRef);
         PublicationSave::query()
             ->where('publication_id', $publication->id)
             ->where('user_id', $request->user()->id)
@@ -315,5 +319,19 @@ class PublicationController extends Controller
         }
 
         return $slug;
+    }
+
+    private function resolvePublication(string $publicationRef): Publication
+    {
+        $publication = Publication::query()
+            ->where('slug', $publicationRef)
+            ->orWhere('id', Str::lower($publicationRef))
+            ->first();
+
+        if ($publication === null) {
+            abort(404);
+        }
+
+        return $publication;
     }
 }
