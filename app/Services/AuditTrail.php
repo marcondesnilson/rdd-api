@@ -78,6 +78,27 @@ class AuditTrail
         };
     }
 
+    public function deviceFromAgent(?string $userAgent): string
+    {
+        if (! $userAgent) {
+            return 'Dispositivo desconhecido';
+        }
+
+        $platform = match (true) {
+            Str::contains($userAgent, 'Windows') => 'Windows',
+            Str::contains($userAgent, 'Mac OS X') || Str::contains($userAgent, 'Macintosh') => 'macOS',
+            Str::contains($userAgent, 'Android') => 'Android',
+            Str::contains($userAgent, 'iPhone') => 'iPhone',
+            Str::contains($userAgent, 'iPad') => 'iPad',
+            Str::contains($userAgent, 'Linux') => 'Linux',
+            default => 'Sistema desconhecido',
+        };
+
+        $deviceType = Str::contains($userAgent, ['Mobile', 'Android', 'iPhone']) ? 'Mobile' : 'Desktop';
+
+        return sprintf('%s (%s)', $platform, $deviceType);
+    }
+
     private function userAgent(Request $request): ?string
     {
         $userAgent = $request->userAgent();

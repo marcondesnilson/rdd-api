@@ -216,7 +216,7 @@ Resolucao de IP real:
 
 Em producao publica com proxy, CDN ou load balancer, definir `AUDIT_TRUSTED_PROXY_IPS` com a lista explicita de IPs/CIDRs reais dos proxies. Nao usar ranges amplos sem controle operacional.
 
-Os campos `lastLogin` e `lastIp` foram adicionados ao shape de usuario a partir do ultimo evento `auth.login`. `GET /me/sessions` e `GET /admin/users/{id}/sessions` retornam IP e navegador derivados dos metadados do token.
+Os campos `lastLogin` e `lastIp` foram adicionados ao shape de usuario a partir do ultimo evento `auth.login`. `GET /me/sessions` e `GET /admin/users/{id}/sessions` retornam dispositivo (plataforma + tipo), IP e navegador derivados do `user_agent` e metadados do token.
 
 `GET /admin/users/{id}/logs` retorna os ultimos 50 eventos do usuario:
 

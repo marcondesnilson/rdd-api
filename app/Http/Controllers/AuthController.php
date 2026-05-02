@@ -181,7 +181,7 @@ class AuthController extends Controller
             ->map(fn ($token): array => [
                 'id' => (string) $token->id,
                 'name' => $token->name,
-                'device' => $this->deviceNameFromToken($token->name),
+                'device' => $this->auditTrail->deviceFromAgent($token->user_agent),
                 'browser' => $this->auditTrail->browserFromAgent($token->user_agent),
                 'ip' => $token->last_used_ip_address ?? $token->ip_address,
                 'location' => null,
@@ -204,7 +204,7 @@ class AuthController extends Controller
             ->map(fn ($token): array => [
                 'id' => 'token-'.$token->id,
                 'action' => $token->id === $user->currentAccessToken()?->id ? 'Sessão atual' : 'Sessão criada',
-                'detail' => $this->deviceNameFromToken($token->name),
+                'detail' => $this->auditTrail->deviceFromAgent($token->user_agent),
                 'at' => $token->created_at?->toISOString(),
             ]);
         $auditActivity = UserAccessLog::query()
@@ -426,11 +426,6 @@ class AuthController extends Controller
             'account.avatar_uploaded' => 'Foto de perfil atualizada',
             default => 'Atividade registrada',
         };
-    }
-
-    private function deviceNameFromToken(string $name): string
-    {
-        return Str::before($name, ':') ?: 'frontend';
     }
 
     private function initialsFor(string $name): string

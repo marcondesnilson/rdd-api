@@ -9,7 +9,6 @@ use App\Models\UserAccessLog;
 use App\Services\AuditTrail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use OwenIt\Auditing\Models\Audit as AuditModel;
 
 class AdminUserController extends Controller
@@ -79,7 +78,7 @@ class AdminUserController extends Controller
             ->map(fn ($token): array => [
                 'id' => (string) $token->id,
                 'name' => $token->name,
-                'device' => $this->deviceNameFromToken($token->name),
+                'device' => $this->auditTrail->deviceFromAgent($token->user_agent),
                 'browser' => $this->auditTrail->browserFromAgent($token->user_agent),
                 'ip' => $token->last_used_ip_address ?? $token->ip_address,
                 'location' => null,
@@ -186,10 +185,5 @@ class AdminUserController extends Controller
             ->join('');
 
         return $initials ?: 'RD';
-    }
-
-    private function deviceNameFromToken(string $name): string
-    {
-        return Str::before($name, ':') ?: 'frontend';
     }
 }
