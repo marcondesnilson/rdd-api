@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminPublicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PublicationController;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/publications', [PublicationController::class, 'index']);
+Route::get('/publications/home', [PublicationController::class, 'home']);
 Route::get('/publications/{publication:slug}', [PublicationController::class, 'show']);
 Route::post('/publications/{publication:slug}/views', [PublicationController::class, 'view']);
 Route::get('/publications/{publicationRef}/comments', [PublicationController::class, 'comments']);
@@ -47,4 +49,6 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::get('/admin/users/{user}/sessions', [AdminUserController::class, 'sessions']);
     Route::get('/admin/users/{user}/logs', [AdminUserController::class, 'logs']);
     Route::get('/admin/users/{user}/audits', [AdminUserController::class, 'audits']);
+    Route::get('/admin/publications', [AdminPublicationController::class, 'index']);
+    Route::patch('/admin/publications/{publication:slug}/status', [AdminPublicationController::class, 'updateStatus']);
 });

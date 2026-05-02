@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Publication;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 /**
  * @mixin Publication
@@ -16,8 +17,9 @@ class PublicationResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $this->resource->loadMissing(['user.profile', 'user.roleRecord']);
+        $this->resource->loadMissing(['user.profile', 'user.roleRecord', 'files.file']);
         $user = $request->user() ?? auth('sanctum')->user();
+        $coverUrl = $this->resolveCoverUrl();
 
         return [
             'id' => $this->id,
@@ -29,8 +31,8 @@ class PublicationResource extends JsonResource
             'content' => $this->content,
             'body' => $this->body,
             'tag' => $this->tag,
-            'coverUrl' => $this->cover_url,
-            'mediaUrl' => $this->media_url,
+            'coverUrl' => $coverUrl,
+            'mediaUrl' => is_string($this->media_url) ? $this->normalizeUrl($this->media_url) : $this->media_url,
             'status' => $this->status,
             'searchEngineIndex' => (bool) $this->search_engine_index,
             'likesCount' => $this->likes_count,
@@ -48,5 +50,48 @@ class PublicationResource extends JsonResource
                 'role' => $this->user?->roleRecord?->role ?? 'membro',
             ],
         ];
+    }
+
+    private function resolveCoverUrl(): ?string
+    {
+        if (is_string($this->cover_url) && trim($this->cover_url) !== '') {
+            return $this->normalizeUrl($this->cover_url);
+        }
+
+        $firstImageFile = $this->files
+            ->sortBy('sort_order')
+            ->first(function ($publicationFile): bool {
+                $mimeType = (string) ($publicationFile->file?->mime_type ?? '');
+                return $publicationFile->kind === 'image' || str_starts_with($mimeType, 'image/');
+            });
+
+        $publicUrl = $firstImageFile?->file?->public_url;
+        if (! is_string($publicUrl) || trim($publicUrl) === '') {
+            return null;
+        }
+
+        return $this->normalizeUrl($publicUrl);
+    }
+
+    private function normalizeUrl(string $url): string
+    {
+        if ($url === '') {
+            return $url;
+        }
+
+        if (Str::startsWith($url, ['http://', 'https://'])) {
+            return $url;
+        }
+
+        if (str_starts_with($url, '//')) {
+            return 'https:'.$url;
+        }
+
+        $baseUrl = rtrim((string) config('services.cdn_upload.base_url'), '/');
+        if ($baseUrl === '') {
+            return $url;
+        }
+
+        return $baseUrl.'/'.ltrim($url, '/');
     }
 }

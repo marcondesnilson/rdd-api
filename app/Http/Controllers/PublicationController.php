@@ -51,6 +51,34 @@ class PublicationController extends Controller
         ]);
     }
 
+    public function home(): JsonResponse
+    {
+        $featured = Publication::query()
+            ->with(['user.profile', 'user.roleRecord'])
+            ->where('post_type', 'publication')
+            ->where('status', 'published')
+            ->latest('published_at')
+            ->latest('created_at')
+            ->limit(4)
+            ->get();
+
+        $mostRead = Publication::query()
+            ->with(['user.profile', 'user.roleRecord'])
+            ->withCount('views')
+            ->where('post_type', 'publication')
+            ->where('status', 'published')
+            ->orderByDesc('views_count')
+            ->latest('published_at')
+            ->latest('created_at')
+            ->limit(4)
+            ->get();
+
+        return response()->json([
+            'featured' => PublicationResource::collection($featured),
+            'mostRead' => PublicationResource::collection($mostRead),
+        ]);
+    }
+
     public function show(Publication $publication): JsonResponse
     {
         abort_unless($publication->post_type === 'publication' && $publication->status === 'published', 404);
