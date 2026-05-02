@@ -32,6 +32,7 @@ Rotas atuais:
 - `POST /auth/register`: cria cadastro publico como `membro` e retorna `{ user, token }`.
 - `GET /me`: retorna usuario autenticado via bearer token.
 - `PATCH /me`: atualiza dados editaveis de perfil/conta do usuario autenticado.
+- `PATCH /me/security`: atualiza configuracoes de seguranca (troca de senha com validacao da senha atual, status de MFA e notificacoes por e-mail).
 - `POST /me/avatar`: recebe upload de imagem de perfil (multipart), publica no CDN e atualiza `avatar_url` do usuario.
 - `GET /me/sessions`: lista tokens/sessoes Sanctum do usuario autenticado.
 - `DELETE /me/sessions`: revoga todas as sessoes exceto a atual.
@@ -97,13 +98,37 @@ Como a API sera backend-only, os artefatos frontend do skeleton Laravel foram re
 - `publicProfile`, `showEmail`, `searchEngineIndex`
 - `allowMessages`, `showActivity`
 
-Os campos em camelCase sao convertidos para colunas snake_case no banco. Alteracao de senha, MFA e exclusao definitiva da conta ainda dependem de contratos especificos.
+Os campos em camelCase sao convertidos para colunas snake_case no banco.
+
+`PATCH /me/security` aceita:
+
+- `currentPassword`
+- `newPassword`
+- `newPasswordConfirmation`
+- `mfaEnabled`
+- `mfaMethod` (`totp` ou `certificate`)
+- `mfaSecret` (base32, obrigatorio ao ativar `totp`)
+- `mfaCode` (6 digitos)
+- `credentialId` (obrigatorio ao ativar `certificate`)
+- `securityEmailAlerts`
+
+Quando `newPassword` for enviada, `currentPassword` e obrigatoria e precisa conferir com a senha atual do usuario.
+Quando `mfaEnabled` for enviada, a API atualiza o metodo informado por `mfaMethod` (padrao `totp` se omitido).
+Ao ativar `totp`, o backend valida o `mfaCode` contra `mfaSecret` antes de persistir.
+Ao ativar `certificate`, o backend exige `credentialId`.
+
+`POST /auth/mfa/verify` (autenticado) valida o segundo fator no login:
+
+- `method`: `totp` ou `certificate`
+- `mfaCode`: obrigatorio para `totp`
+- `credentialId`: obrigatorio para `certificate`
 
 Persistencia relacionada:
 
 - `users`: `id`, `name`, `email`, senha, verificacao de e-mail e timestamps.
 - `user_profiles`: iniciais, manchete, bio, avatar, telefone e idioma.
 - `user_preferences`: visibilidade e privacidade.
+- `user_mfa`: metodos de MFA por usuario, incluindo segredo TOTP cifrado, `credential_id` de certificado e ultimo uso.
 - `user_roles`: papel atual do usuario.
 - `user_verifications`: status e dados da verificacao academica/profissional.
 - `personal_access_tokens`: tokens Sanctum com IP de criacao, user-agent e ultimo IP de uso.

@@ -66,6 +66,11 @@ class User extends Authenticatable implements AuditableContract
         return $this->hasMany(UserAccessLog::class, 'target_user_id');
     }
 
+    public function mfaMethods(): HasMany
+    {
+        return $this->hasMany(UserMfa::class);
+    }
+
     public function actedAccessLogs(): HasMany
     {
         return $this->hasMany(UserAccessLog::class, 'actor_user_id');

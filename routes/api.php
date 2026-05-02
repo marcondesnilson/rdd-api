@@ -12,6 +12,8 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
     Route::post('/me/avatar', [AuthController::class, 'uploadAvatar']);
+    Route::patch('/me/security', [AuthController::class, 'updateSecurity']);
+    Route::post('/auth/mfa/verify', [AuthController::class, 'verifyMfa']);
     Route::get('/me/sessions', [AuthController::class, 'sessions']);
     Route::delete('/me/sessions', [AuthController::class, 'destroyOtherSessions']);
     Route::delete('/me/sessions/{tokenId}', [AuthController::class, 'destroySession']);

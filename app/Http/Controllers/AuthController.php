@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\UpdateAccountSecurityRequest;
 use App\Http\Requests\UpdateMeRequest;
 use App\Http\Requests\UploadAvatarRequest;
+use App\Http\Requests\VerifyMfaRequest;
 use App\Http\Resources\SessionUserResource;
 use App\Models\User;
 use App\Models\UserAccessLog;
@@ -13,6 +15,7 @@ use App\Services\AuditTrail;
 use App\Services\CdnFileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -130,7 +133,7 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
+            'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog', 'mfaMethods'])),
         ]);
     }
 
@@ -266,6 +269,126 @@ class AuthController extends Controller
         return response()->json(['message' => 'Outras sessões encerradas.']);
     }
 
+    public function updateSecurity(UpdateAccountSecurityRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+        $hasPasswordChange = array_key_exists('newPassword', $data);
+
+        if ($hasPasswordChange && $data['newPassword'] !== ($data['newPasswordConfirmation'] ?? null)) {
+            throw ValidationException::withMessages([
+                'newPasswordConfirmation' => ['A confirmação da nova senha não confere.'],
+            ]);
+        }
+
+        if ($hasPasswordChange) {
+            if (! Hash::check($data['currentPassword'], $user->password)) {
+                throw ValidationException::withMessages([
+                    'currentPassword' => ['A senha atual informada é inválida.'],
+                ]);
+            }
+            $user->password = $data['newPassword'];
+            $user->save();
+        }
+
+        $preferences = $user->preferences()->firstOrCreate();
+
+        if (array_key_exists('mfaEnabled', $data)) {
+            $method = $data['mfaMethod'] ?? 'totp';
+            $mfaRecord = $user->mfaMethods()->firstOrCreate(['method' => $method]);
+
+            if ($data['mfaEnabled'] === true) {
+                if ($method === 'totp') {
+                    $secret = $data['mfaSecret'] ?? null;
+                    $code = $data['mfaCode'] ?? null;
+                    if (! $secret || ! $code || ! $this->isValidTotpCode($secret, $code)) {
+                        throw ValidationException::withMessages([
+                            'mfaCode' => ['Código TOTP inválido para a chave informada.'],
+                        ]);
+                    }
+                    $mfaRecord->totp_secret = Crypt::encryptString($secret);
+                    $mfaRecord->credential_id = null;
+                }
+
+                if ($method === 'certificate') {
+                    $credentialId = $data['credentialId'] ?? null;
+                    if (! $credentialId) {
+                        throw ValidationException::withMessages([
+                            'credentialId' => ['Credencial de certificado é obrigatória para ativar este método.'],
+                        ]);
+                    }
+                    $mfaRecord->credential_id = $credentialId;
+                    $mfaRecord->totp_secret = null;
+                }
+            }
+
+            $mfaRecord->enabled = $data['mfaEnabled'];
+            $mfaRecord->verified_at = $data['mfaEnabled'] ? now() : null;
+            $mfaRecord->save();
+        }
+        if (array_key_exists('securityEmailAlerts', $data)) {
+            $preferences->security_email_alerts = $data['securityEmailAlerts'];
+        }
+
+        $preferences->save();
+
+        $this->auditTrail->record($request, 'account.security_updated', $user, metadata: [
+            'changed' => array_values(array_filter([
+                $hasPasswordChange ? 'password' : null,
+                array_key_exists('mfaEnabled', $data) ? 'mfaEnabled' : null,
+                array_key_exists('securityEmailAlerts', $data) ? 'securityEmailAlerts' : null,
+            ])),
+        ]);
+
+        return response()->json([
+            'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog', 'mfaMethods'])),
+        ]);
+    }
+
+    public function verifyMfa(VerifyMfaRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+        $method = $data['method'];
+
+        $mfaRecord = $user->mfaMethods()
+            ->where('method', $method)
+            ->where('enabled', true)
+            ->first();
+
+        if (! $mfaRecord) {
+            throw ValidationException::withMessages([
+                'method' => ['Método de MFA não está habilitado para este usuário.'],
+            ]);
+        }
+
+        if ($method === 'totp') {
+            $secret = $mfaRecord->totp_secret ? Crypt::decryptString($mfaRecord->totp_secret) : null;
+            if (! $secret || ! $this->isValidTotpCode($secret, (string) ($data['mfaCode'] ?? ''))) {
+                throw ValidationException::withMessages([
+                    'mfaCode' => ['Código TOTP inválido.'],
+                ]);
+            }
+        }
+
+        if ($method === 'certificate') {
+            if (! $mfaRecord->credential_id || $mfaRecord->credential_id !== ($data['credentialId'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'credentialId' => ['Credencial de certificado inválida.'],
+                ]);
+            }
+        }
+
+        $mfaRecord->last_used_at = now();
+        $mfaRecord->save();
+
+        $this->auditTrail->record($request, 'auth.mfa_verified', $user, metadata: [
+            'method' => $method,
+        ]);
+
+        return response()->json(['verified' => true]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $this->auditTrail->record($request, 'auth.logout', $request->user());
@@ -284,7 +407,7 @@ class AuthController extends Controller
         $this->auditTrail->record($request, $event, $user, token: $newToken->accessToken);
 
         return response()->json([
-            'user' => SessionUserResource::make($user->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog'])),
+            'user' => SessionUserResource::make($user->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog', 'mfaMethods'])),
             'token' => $newToken->plainTextToken,
         ], $status);
     }
@@ -295,9 +418,11 @@ class AuthController extends Controller
             'auth.login' => 'Login realizado',
             'auth.register' => 'Cadastro realizado',
             'auth.logout' => 'Logout realizado',
+            'auth.mfa_verified' => 'MFA validado',
             'auth.session_revoked' => 'Sessão encerrada',
             'auth.other_sessions_revoked' => 'Outras sessões encerradas',
             'account.updated' => 'Conta atualizada',
+            'account.security_updated' => 'Segurança da conta atualizada',
             'account.avatar_uploaded' => 'Foto de perfil atualizada',
             default => 'Atividade registrada',
         };
@@ -317,5 +442,65 @@ class AuthController extends Controller
             ->join('');
 
         return $initials ?: 'RD';
+    }
+
+    private function isValidTotpCode(string $secret, string $code): bool
+    {
+        if (! preg_match('/^\d{6}$/', $code)) {
+            return false;
+        }
+
+        $timeSlice = intdiv(time(), 30);
+        for ($offset = -1; $offset <= 1; $offset++) {
+            if (hash_equals($this->generateTotpCode($secret, $timeSlice + $offset), $code)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function generateTotpCode(string $secret, int $timeSlice): string
+    {
+        $key = $this->decodeBase32($secret);
+        if ($key === '') {
+            return '000000';
+        }
+
+        $binaryTime = pack('N*', 0).pack('N*', $timeSlice);
+        $hash = hash_hmac('sha1', $binaryTime, $key, true);
+        $offset = ord(substr($hash, -1)) & 0x0F;
+        $value = (
+            ((ord($hash[$offset]) & 0x7F) << 24) |
+            ((ord($hash[$offset + 1]) & 0xFF) << 16) |
+            ((ord($hash[$offset + 2]) & 0xFF) << 8) |
+            (ord($hash[$offset + 3]) & 0xFF)
+        ) % 1000000;
+
+        return str_pad((string) $value, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function decodeBase32(string $encoded): string
+    {
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $clean = strtoupper(preg_replace('/[^A-Z2-7]/', '', $encoded) ?? '');
+
+        $bits = '';
+        foreach (str_split($clean) as $char) {
+            $position = strpos($alphabet, $char);
+            if ($position === false) {
+                return '';
+            }
+            $bits .= str_pad(decbin($position), 5, '0', STR_PAD_LEFT);
+        }
+
+        $output = '';
+        foreach (str_split($bits, 8) as $byte) {
+            if (strlen($byte) === 8) {
+                $output .= chr(bindec($byte));
+            }
+        }
+
+        return $output;
     }
 }

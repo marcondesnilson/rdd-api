@@ -18,7 +18,7 @@ class SessionUserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $relations = ['profile', 'preferences', 'roleRecord', 'verification'];
+        $relations = ['profile', 'preferences', 'roleRecord', 'verification', 'mfaMethods'];
 
         if ($this->resource->exists) {
             $relations[] = 'latestLoginLog';
@@ -28,6 +28,11 @@ class SessionUserResource extends JsonResource
         $latestLoginLog = $this->resource->relationLoaded('latestLoginLog')
             ? $this->resource->getRelation('latestLoginLog')
             : null;
+        $enabledMfaMethods = collect($this->mfaMethods ?? [])
+            ->filter(fn ($item) => (bool) $item->enabled)
+            ->pluck('method')
+            ->values()
+            ->all();
 
         return [
             'id' => $this->id,
@@ -45,6 +50,9 @@ class SessionUserResource extends JsonResource
             'searchEngineIndex' => $this->preferences?->search_engine_index ?? true,
             'allowMessages' => $this->preferences?->allow_messages ?? true,
             'showActivity' => $this->preferences?->show_activity ?? true,
+            'mfaEnabled' => count($enabledMfaMethods) > 0,
+            'mfaMethods' => $enabledMfaMethods,
+            'securityEmailAlerts' => $this->preferences?->security_email_alerts ?? true,
             'verification' => [
                 'status' => $this->verification?->status ?? 'none',
                 'requestedRole' => $this->verification?->requested_role,

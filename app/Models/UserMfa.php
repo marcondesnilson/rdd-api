@@ -10,26 +10,25 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
 #[Fillable([
     'user_id',
-    'public_profile',
-    'show_email',
-    'search_engine_index',
-    'allow_messages',
-    'show_activity',
-    'security_email_alerts',
+    'method',
+    'enabled',
+    'totp_secret',
+    'credential_id',
+    'verified_at',
+    'last_used_at',
 ])]
-class UserPreference extends Model implements AuditableContract
+class UserMfa extends Model implements AuditableContract
 {
     use Auditable;
+
+    protected $table = 'user_mfa';
 
     protected function casts(): array
     {
         return [
-            'public_profile' => 'boolean',
-            'show_email' => 'boolean',
-            'search_engine_index' => 'boolean',
-            'allow_messages' => 'boolean',
-            'show_activity' => 'boolean',
-            'security_email_alerts' => 'boolean',
+            'enabled' => 'boolean',
+            'verified_at' => 'datetime',
+            'last_used_at' => 'datetime',
         ];
     }
 
