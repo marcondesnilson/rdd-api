@@ -2,7 +2,7 @@
 
 $frontendOrigins = array_filter(array_map(
     'trim',
-    explode(',', env('FRONTEND_URLS', 'http://localhost:8080,http://localhost:8081,https://republica-do-direito.lovable.app')),
+    explode(',', env('FRONTEND_URLS', 'http://localhost:8080,http://localhost:8081,https://republica-do-direito.lovable.app,https://republica-do-direito.pages.dev')),
 ));
 
 return [

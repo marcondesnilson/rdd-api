@@ -21,7 +21,7 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Tabela `users` mantida enxuta; dados de perfil, preferencias, roles e verificacao foram separados em migrations proprias.
 - Artefatos frontend do skeleton foram removidos para manter o projeto backend-only.
 - Autenticacao por bearer token com Laravel Sanctum.
-- CORS configurado para origens locais e previews Lovable.
+- CORS configurado para origens locais, deploy `https://republica-do-direito.pages.dev` e previews Lovable.
 - Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, atualizacao administrativa de usuario, sessoes administrativas, logs operacionais por usuario e historico de auditoria de modelos.
 - Interacoes de engajamento (`curtir`, `comentar`, `salvar`) suportam lookup de publicacao por `slug` ou `id` (ULID), permitindo uso consistente em publicacoes longas e posts de timeline.
 - Ao curtir (`POST /publications/{publicationRef}/likes`), se ja existir um `publication_like` soft-deletado do mesmo usuario para a mesma publicacao, o registro e restaurado em vez de criar novo.

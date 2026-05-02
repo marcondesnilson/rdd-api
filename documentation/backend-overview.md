@@ -405,7 +405,7 @@ Essas credenciais sao apenas para desenvolvimento/local e devem ser trocadas ant
 
 ## Variaveis relevantes
 
-- `FRONTEND_URLS`: lista separada por virgulas com origens permitidas no CORS. Padrao local: `http://localhost:8080,http://localhost:8081,https://republica-do-direito.lovable.app`.
+- `FRONTEND_URLS`: lista separada por virgulas com origens permitidas no CORS. Padrao local: `http://localhost:8080,http://localhost:8081,https://republica-do-direito.lovable.app,https://republica-do-direito.pages.dev`.
 - CORS tambem aceita previews Lovable por padrao: `https://*.lovableproject.com` e `https://*.lovable.app`.
 - `AUDITING_ENABLED`: habilita/desabilita a auditoria base de modelos. Padrao: `true`.
 - `AUDIT_TRUSTED_PROXY_IPS`: lista separada por virgulas com IPs/CIDRs de proxies/CDNs/load balancers confiaveis para leitura de `CF-Connecting-IP`, `True-Client-IP` e `X-Forwarded-For`.
