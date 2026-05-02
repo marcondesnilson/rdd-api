@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\TimelinePostController;
 use App\Http\Middleware\RecordAuthenticatedAccess;
@@ -16,6 +17,8 @@ Route::get('/publications/{publicationRef}/comments', [PublicationController::cl
 
 Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/me/dashboard/metrics', [DashboardController::class, 'metrics']);
+    Route::get('/me/publications', [PublicationController::class, 'myPublications']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
     Route::post('/me/avatar', [AuthController::class, 'uploadAvatar']);
     Route::patch('/me/security', [AuthController::class, 'updateSecurity']);

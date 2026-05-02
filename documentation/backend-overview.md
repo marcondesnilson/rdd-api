@@ -31,6 +31,8 @@ Rotas atuais:
 - `POST /auth/login`: autentica por email/senha e retorna `{ user, token }`.
 - `POST /auth/register`: cria cadastro publico como `membro` e retorna `{ user, token }`.
 - `GET /me`: retorna usuario autenticado via bearer token.
+- `GET /me/dashboard/metrics`: retorna metricas do painel do usuario autenticado (`viewsCount`, `likesCount`, `followersCount`, `publicationsCount`).
+- `GET /me/publications`: lista materias longas do usuario autenticado (`post_type=publication`), com filtro opcional `status`.
 - `PATCH /me`: atualiza dados editaveis de perfil/conta do usuario autenticado.
 - `PATCH /me/security`: atualiza configuracoes de seguranca (troca de senha com validacao da senha atual, status de MFA e notificacoes por e-mail).
 - `POST /me/avatar`: recebe upload de imagem de perfil (multipart), publica no CDN e atualiza `avatar_url` do usuario.
@@ -107,6 +109,19 @@ Como a API sera backend-only, os artefatos frontend do skeleton Laravel foram re
 
 Os campos em camelCase sao convertidos para colunas snake_case no banco.
 
+`GET /me/publications` (autenticado) retorna:
+
+- somente registros do usuario logado com `post_type=publication`;
+- inclui `draft`, `pending_review`, `published` e `archived`;
+- aceita query param opcional `status` para filtrar um unico status.
+
+`GET /me/dashboard/metrics` (autenticado) agrega dados reais do banco para o topo do painel:
+
+- `viewsCount`: total de visualizacoes em materias do usuario;
+- `likesCount`: total de curtidas recebidas em materias do usuario;
+- `followersCount`: total de seguidores em `user_follows`;
+- `publicationsCount`: total de materias longas do usuario (`post_type=publication`).
+
 `PATCH /me/security` aceita:
 
 - `currentPassword`
@@ -145,6 +160,7 @@ Persistencia relacionada:
   - `post_type`: `timeline` ou `publication`
   - `content_type`: `text`, `image`, `video`, `link`
   alem de `slug`, `title`, `excerpt`, `content`, `body`, `status` e `search_engine_index`.
+  - indice adicional para dashboard: `publications_user_post_type_created_at_idx` em (`user_id`, `post_type`, `created_at`).
 - `tags`: catalogo de tags.
 - `publication_tag`: relacionamento N:N entre publicacoes e tags.
 - `publication_files`: vinculo entre publicacao e arquivos CDN (`files`) para imagem/video/upload.
@@ -152,6 +168,7 @@ Persistencia relacionada:
 - `publication_likes`: likes por usuario (usuario obrigatorio).
 - `publication_saves`: itens salvos por usuario (usuario obrigatorio).
 - `publication_views`: visualizacoes com `user_id` opcional para visitantes anonimos.
+- `user_follows`: relacionamento seguidor -> seguido para metricas sociais e feed personalizado.
 
 ### Conteudo editorial
 

@@ -23,6 +23,8 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Autenticacao por bearer token com Laravel Sanctum.
 - CORS configurado para origens locais, deploy `https://republica-do-direito.pages.dev` e previews Lovable.
 - Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, atualizacao administrativa de usuario, sessoes administrativas, logs operacionais por usuario e historico de auditoria de modelos.
+- Endpoint autenticado `GET /me/publications` para listar materias longas do usuario logado (incluindo rascunhos e pendentes), com filtro opcional por status.
+- Endpoint autenticado `GET /me/dashboard/metrics` para servir KPIs reais do painel (visualizacoes, curtidas, seguidores e publicacoes).
 - Interacoes de engajamento (`curtir`, `comentar`, `salvar`) suportam lookup de publicacao por `slug` ou `id` (ULID), permitindo uso consistente em publicacoes longas e posts de timeline.
 - Ao curtir (`POST /publications/{publicationRef}/likes`), se ja existir um `publication_like` soft-deletado do mesmo usuario para a mesma publicacao, o registro e restaurado em vez de criar novo.
 - Recursos de `publications` e `timeline/posts` retornam estado por usuario autenticado: `liked` e `saved`, alem das contagens (`likesCount`, `commentsCount`).

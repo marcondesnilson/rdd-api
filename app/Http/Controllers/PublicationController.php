@@ -7,12 +7,12 @@ use App\Http\Requests\StorePublicationRequest;
 use App\Http\Requests\UploadPublicationFileRequest;
 use App\Http\Resources\PublicationResource;
 use App\Models\File;
+use App\Models\Publication;
 use App\Models\PublicationComment;
 use App\Models\PublicationFile;
 use App\Models\PublicationLike;
 use App\Models\PublicationSave;
 use App\Models\PublicationView;
-use App\Models\Publication;
 use App\Models\Tag;
 use App\Services\AuditTrail;
 use App\Services\CdnFileUploadService;
@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PublicationController extends Controller
 {
@@ -56,6 +57,29 @@ class PublicationController extends Controller
 
         return response()->json([
             'publication' => PublicationResource::make($publication),
+        ]);
+    }
+
+    public function myPublications(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', Rule::in(['draft', 'pending_review', 'published', 'archived'])],
+        ]);
+
+        $publications = Publication::query()
+            ->with(['user.profile', 'user.roleRecord'])
+            ->where('post_type', 'publication')
+            ->where('user_id', $request->user()->id)
+            ->when(
+                isset($data['status']) && is_string($data['status']),
+                fn ($query) => $query->where('status', $data['status'])
+            )
+            ->latest('published_at')
+            ->latest('created_at')
+            ->get();
+
+        return response()->json([
+            'publications' => PublicationResource::collection($publications),
         ]);
     }
 
