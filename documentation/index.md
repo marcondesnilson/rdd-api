@@ -35,6 +35,7 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Fluxo de relacionamento social no detalhe de publicacao com `POST /profiles/{author}/follow` e `DELETE /profiles/{author}/follow`, incluindo retorno de estado inicial `followingAuthor` no payload de publicacoes.
 - Ao curtir (`POST /publications/{publicationRef}/likes`), se ja existir um `publication_like` soft-deletado do mesmo usuario para a mesma publicacao, o registro e restaurado em vez de criar novo.
 - Recursos de `publications` e `timeline/posts` retornam estado por usuario autenticado: `liked` e `saved`, alem das contagens (`likesCount`, `commentsCount`).
+- Endpoints de timeline `GET /timeline/posts` e `GET /profiles/{id}/timeline-posts` agora suportam paginacao (`page`, `perPage`) e retornam `meta.hasMore` para scroll infinito no frontend.
 - Endpoint de seguranca da conta (`PATCH /me/security`) com validacao de senha atual para troca de senha e persistencia de MFA/notificacoes de seguranca.
 - Conteudo separado em duas trilhas na mesma tabela `publications`:
   - `post_type=timeline`: postagens curtas para membros logados.

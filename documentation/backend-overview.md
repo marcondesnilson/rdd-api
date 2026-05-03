@@ -253,6 +253,24 @@ Resposta:
 }
 ```
 
+`GET /timeline/posts` e `GET /profiles/{id}/timeline-posts` aceitam paginação por query string:
+
+- `page` (opcional, inteiro >= 1, default `1`)
+- `perPage` (opcional, inteiro entre `1` e `50`, default `15`)
+
+Resposta inclui metadados para scroll infinito:
+
+```json
+{
+  "posts": [],
+  "meta": {
+    "currentPage": 1,
+    "perPage": 15,
+    "hasMore": true
+  }
+}
+```
+
 ### Upload de arquivos (CDN)
 
 O backend possui uma camada generica de cliente CDN e um caso de uso de upload:

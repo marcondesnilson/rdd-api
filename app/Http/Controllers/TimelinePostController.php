@@ -19,28 +19,35 @@ class TimelinePostController extends Controller
 {
     public function __construct(private readonly AuditTrail $auditTrail) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $perPage = max(1, min($request->integer('perPage', 15), 50));
+
         $posts = Publication::query()
             ->with(['user.profile', 'user.roleRecord'])
             ->where('post_type', 'timeline')
             ->when(
-                request()->filled('contentType'),
-                fn ($query) => $query->where('content_type', request()->string('contentType')->toString())
+                $request->filled('contentType'),
+                fn ($query) => $query->where('content_type', $request->string('contentType')->toString())
             )
             ->when(
-                request()->filled('tag'),
-                fn ($query) => $query->whereHas('tags', function ($query): void {
-                    $tag = request()->string('tag')->toString();
+                $request->filled('tag'),
+                fn ($query) => $query->whereHas('tags', function ($query) use ($request): void {
+                    $tag = $request->string('tag')->toString();
                     $query->where('slug', Str::slug($tag))->orWhere('name', $tag);
                 })
             )
             ->latest()
-            ->limit(100)
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json([
-            'posts' => TimelinePostResource::collection($posts),
+            'posts' => TimelinePostResource::collection($posts->items()),
+            'meta' => [
+                'currentPage' => $posts->currentPage(),
+                'perPage' => $posts->perPage(),
+                'hasMore' => $posts->hasMorePages(),
+            ],
         ]);
     }
 
@@ -105,6 +112,8 @@ class TimelinePostController extends Controller
 
     public function profileTimeline(Request $request, User $user): JsonResponse
     {
+        $perPage = max(1, min($request->integer('perPage', 15), 50));
+
         $posts = Publication::query()
             ->with(['user.profile', 'user.roleRecord'])
             ->where('post_type', 'timeline')
@@ -121,13 +130,18 @@ class TimelinePostController extends Controller
                 })
             )
             ->latest()
-            ->limit(100)
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         $this->auditTrail->record($request, 'timeline.profile_viewed', $request->user(), $user);
 
         return response()->json([
-            'posts' => TimelinePostResource::collection($posts),
+            'posts' => TimelinePostResource::collection($posts->items()),
+            'meta' => [
+                'currentPage' => $posts->currentPage(),
+                'perPage' => $posts->perPage(),
+                'hasMore' => $posts->hasMorePages(),
+            ],
         ]);
     }
 
