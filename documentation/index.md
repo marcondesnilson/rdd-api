@@ -21,7 +21,8 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Tabela `users` mantida enxuta; dados de perfil, preferencias, roles e verificacao foram separados em migrations proprias.
 - Artefatos frontend do skeleton foram removidos para manter o projeto backend-only.
 - Autenticacao por bearer token com Laravel Sanctum.
-- CORS configurado para origens locais, deploy `https://republica-do-direito.pages.dev` e previews Lovable.
+- CORS configurado para origens locais, deploys `https://republica-do-direito.pages.dev`, `https://republicadodireito.com.br`, `https://www.republicadodireito.com.br` e previews Lovable.
+- `FRONTEND_URLS` passa a funcionar como lista complementar de origens CORS (nao sobrescreve as origens padrao de deploy/local), reduzindo risco de bloqueio por configuracao incompleta em ambiente.
 - Endpoints iniciais de login, cadastro, sessao atual, atualizacao de "Minha conta", sessoes da conta, criacao/listagem administrativa de usuarios, detalhe administrativo, atualizacao administrativa de usuario, sessoes administrativas, logs operacionais por usuario e historico de auditoria de modelos.
 - Moderacao de publicacoes no admin com `GET /admin/publications` (pendentes por padrao) e `PATCH /admin/publications/{slug}/status` para revisar/publicar.
 - Endpoint autenticado `GET /me/publications` para listar materias longas do usuario logado (incluindo rascunhos e pendentes), com filtro opcional por status.

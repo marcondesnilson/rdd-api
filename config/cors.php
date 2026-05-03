@@ -1,9 +1,23 @@
 <?php
 
-$frontendOrigins = array_filter(array_map(
+$defaultFrontendOrigins = [
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'https://republica-do-direito.lovable.app',
+    'https://republica-do-direito.pages.dev',
+    'https://republicadodireito.com.br',
+    'https://www.republicadodireito.com.br',
+];
+
+$envFrontendOrigins = array_filter(array_map(
     'trim',
-    explode(',', env('FRONTEND_URLS', 'http://localhost:8080,http://localhost:8081,https://republica-do-direito.lovable.app,https://republica-do-direito.pages.dev')),
+    explode(',', (string) env('FRONTEND_URLS', '')),
 ));
+
+$frontendOrigins = array_values(array_unique(array_merge(
+    $defaultFrontendOrigins,
+    $envFrontendOrigins,
+)));
 
 return [
     'paths' => ['*'],
