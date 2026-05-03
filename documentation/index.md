@@ -27,7 +27,9 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Endpoint autenticado `GET /me/publications` para listar materias longas do usuario logado (incluindo rascunhos e pendentes), com filtro opcional por status.
 - Endpoint autenticado `GET /me/dashboard/metrics` para servir KPIs reais do painel (visualizacoes, curtidas, seguidores e publicacoes).
 - Endpoint publico `GET /publications/home` para a home retornar secoes separadas de `featured` (em destaque) e `mostRead` (mais lidas), ambas vindas do banco.
+- Endpoint publico de detalhe `GET /publications/{publicationRef}/{slug?}` aceitando lookup por `id` (ULID) ou `slug`, com segmento `slug` opcional para URL amigavel no frontend.
 - Interacoes de engajamento (`curtir`, `comentar`, `salvar`) suportam lookup de publicacao por `slug` ou `id` (ULID), permitindo uso consistente em publicacoes longas e posts de timeline.
+- Fluxo de relacionamento social no detalhe de publicacao com `POST /profiles/{author}/follow` e `DELETE /profiles/{author}/follow`, incluindo retorno de estado inicial `followingAuthor` no payload de publicacoes.
 - Ao curtir (`POST /publications/{publicationRef}/likes`), se ja existir um `publication_like` soft-deletado do mesmo usuario para a mesma publicacao, o registro e restaurado em vez de criar novo.
 - Recursos de `publications` e `timeline/posts` retornam estado por usuario autenticado: `liked` e `saved`, alem das contagens (`likesCount`, `commentsCount`).
 - Endpoint de seguranca da conta (`PATCH /me/security`) com validacao de senha atual para troca de senha e persistencia de MFA/notificacoes de seguranca.

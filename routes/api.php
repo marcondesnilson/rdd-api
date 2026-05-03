@@ -13,7 +13,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/publications', [PublicationController::class, 'index']);
 Route::get('/publications/home', [PublicationController::class, 'home']);
-Route::get('/publications/{publication:slug}', [PublicationController::class, 'show']);
+Route::get('/publications/{publicationRef}/{slug?}', [PublicationController::class, 'show']);
 Route::post('/publications/{publication:slug}/views', [PublicationController::class, 'view']);
 Route::get('/publications/{publicationRef}/comments', [PublicationController::class, 'comments']);
 
@@ -37,6 +37,8 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::delete('/publications/{publicationRef}/likes', [PublicationController::class, 'unlike']);
     Route::post('/publications/{publicationRef}/saves', [PublicationController::class, 'savePublication']);
     Route::delete('/publications/{publicationRef}/saves', [PublicationController::class, 'unsavePublication']);
+    Route::post('/profiles/{author}/follow', [PublicationController::class, 'followAuthor']);
+    Route::delete('/profiles/{author}/follow', [PublicationController::class, 'unfollowAuthor']);
 
     Route::get('/timeline/posts', [TimelinePostController::class, 'index']);
     Route::post('/timeline/posts', [TimelinePostController::class, 'store']);

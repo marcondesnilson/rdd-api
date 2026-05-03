@@ -6,6 +6,7 @@ use App\Models\Publication;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @mixin Publication
@@ -39,6 +40,13 @@ class PublicationResource extends JsonResource
             'commentsCount' => $this->comments_count,
             'liked' => $user !== null ? $this->likes()->where('user_id', $user->id)->exists() : false,
             'saved' => $user !== null ? $this->saves()->where('user_id', $user->id)->exists() : false,
+            'followingAuthor' => $user !== null && $this->user !== null
+                ? DB::table('user_follows')
+                    ->where('follower_id', $user->id)
+                    ->where('followee_id', $this->user->id)
+                    ->whereNull('deleted_at')
+                    ->exists()
+                : false,
             'publishedAt' => $this->published_at?->toISOString(),
             'createdAt' => $this->created_at?->toISOString(),
             'author' => [

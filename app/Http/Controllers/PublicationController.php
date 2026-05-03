@@ -14,6 +14,7 @@ use App\Models\PublicationLike;
 use App\Models\PublicationSave;
 use App\Models\PublicationView;
 use App\Models\Tag;
+use App\Models\User;
 use App\Services\AuditTrail;
 use App\Services\CdnFileUploadService;
 use Illuminate\Http\JsonResponse;
@@ -79,8 +80,9 @@ class PublicationController extends Controller
         ]);
     }
 
-    public function show(Publication $publication): JsonResponse
+    public function show(string $publicationRef): JsonResponse
     {
+        $publication = $this->resolvePublication($publicationRef);
         abort_unless($publication->post_type === 'publication' && $publication->status === 'published', 404);
 
         return response()->json([
@@ -260,11 +262,24 @@ class PublicationController extends Controller
     public function savePublication(Request $request, string $publicationRef): JsonResponse
     {
         $publication = $this->resolvePublication($publicationRef);
-        DB::table('publication_saves')->insertOrIgnore([
-            'publication_id' => $publication->id,
-            'user_id' => $request->user()->id,
-            'created_at' => now(),
-        ]);
+        $userId = $request->user()->id;
+
+        $restored = DB::table('publication_saves')
+            ->where('publication_id', $publication->id)
+            ->where('user_id', $userId)
+            ->whereNotNull('deleted_at')
+            ->update([
+                'deleted_at' => null,
+            ]);
+
+        if ($restored === 0) {
+            DB::table('publication_saves')->insertOrIgnore([
+                'publication_id' => $publication->id,
+                'user_id' => $userId,
+                'created_at' => now(),
+                'deleted_at' => null,
+            ]);
+        }
 
         return response()->json(['saved' => true]);
     }
@@ -278,6 +293,47 @@ class PublicationController extends Controller
             ->delete();
 
         return response()->json(['saved' => false]);
+    }
+
+    public function followAuthor(Request $request, User $author): JsonResponse
+    {
+        $followerId = $request->user()->id;
+        abort_if($followerId === $author->id, 422, 'Nao e permitido seguir a si mesmo.');
+
+        $restored = DB::table('user_follows')
+            ->where('follower_id', $followerId)
+            ->where('followee_id', $author->id)
+            ->whereNotNull('deleted_at')
+            ->update([
+                'deleted_at' => null,
+            ]);
+
+        if ($restored === 0) {
+            DB::table('user_follows')->insertOrIgnore([
+                'follower_id' => $followerId,
+                'followee_id' => $author->id,
+                'created_at' => now(),
+                'deleted_at' => null,
+            ]);
+        }
+
+        return response()->json(['following' => true]);
+    }
+
+    public function unfollowAuthor(Request $request, User $author): JsonResponse
+    {
+        $followerId = $request->user()->id;
+        abort_if($followerId === $author->id, 422, 'Nao e permitido deixar de seguir a si mesmo.');
+
+        DB::table('user_follows')
+            ->where('follower_id', $followerId)
+            ->where('followee_id', $author->id)
+            ->whereNull('deleted_at')
+            ->update([
+                'deleted_at' => now(),
+            ]);
+
+        return response()->json(['following' => false]);
     }
 
     public function view(Request $request, Publication $publication): JsonResponse
