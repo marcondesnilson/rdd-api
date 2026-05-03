@@ -13,9 +13,9 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/publications', [PublicationController::class, 'index']);
 Route::get('/publications/home', [PublicationController::class, 'home']);
+Route::get('/publications/{publicationRef}/comments', [PublicationController::class, 'comments']);
 Route::get('/publications/{publicationRef}/{slug?}', [PublicationController::class, 'show']);
 Route::post('/publications/{publication:slug}/views', [PublicationController::class, 'view']);
-Route::get('/publications/{publicationRef}/comments', [PublicationController::class, 'comments']);
 
 Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
@@ -33,6 +33,7 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::post('/publications', [PublicationController::class, 'store']);
     Route::post('/publications/files/upload', [PublicationController::class, 'uploadFile']);
     Route::post('/publications/{publicationRef}/comments', [PublicationController::class, 'storeComment']);
+    Route::delete('/publications/{publicationRef}/comments/{commentId}', [PublicationController::class, 'destroyComment']);
     Route::post('/publications/{publicationRef}/likes', [PublicationController::class, 'like']);
     Route::delete('/publications/{publicationRef}/likes', [PublicationController::class, 'unlike']);
     Route::post('/publications/{publicationRef}/saves', [PublicationController::class, 'savePublication']);

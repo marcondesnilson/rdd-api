@@ -29,6 +29,8 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Endpoint publico `GET /publications/home` para a home retornar secoes separadas de `featured` (em destaque) e `mostRead` (mais lidas), ambas vindas do banco.
 - Endpoint publico de detalhe `GET /publications/{publicationRef}/{slug?}` aceitando lookup por `id` (ULID) ou `slug`, com segmento `slug` opcional para URL amigavel no frontend.
 - Interacoes de engajamento (`curtir`, `comentar`, `salvar`) suportam lookup de publicacao por `slug` ou `id` (ULID), permitindo uso consistente em publicacoes longas e posts de timeline.
+- Exclusao de comentarios disponivel em `DELETE /publications/{publicationRef}/comments/{commentId}` para dono do comentario ou usuario com role `admin`.
+- Ordem de roteamento de `publications` ajustada para priorizar `GET /publications/{publicationRef}/comments` antes da rota canonica `GET /publications/{publicationRef}/{slug?}`, evitando colisao quando o frontend abre URLs no formato `/:id/:slug`.
 - Fluxo de relacionamento social no detalhe de publicacao com `POST /profiles/{author}/follow` e `DELETE /profiles/{author}/follow`, incluindo retorno de estado inicial `followingAuthor` no payload de publicacoes.
 - Ao curtir (`POST /publications/{publicationRef}/likes`), se ja existir um `publication_like` soft-deletado do mesmo usuario para a mesma publicacao, o registro e restaurado em vez de criar novo.
 - Recursos de `publications` e `timeline/posts` retornam estado por usuario autenticado: `liked` e `saved`, alem das contagens (`likesCount`, `commentsCount`).

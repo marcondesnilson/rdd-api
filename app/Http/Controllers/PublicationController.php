@@ -169,6 +169,10 @@ class PublicationController extends Controller
     public function comments(string $publicationRef): JsonResponse
     {
         $publication = $this->resolvePublication($publicationRef);
+        $viewer = request()->user() ?? auth('sanctum')->user();
+        $viewerId = $viewer?->id;
+        $viewerIsAdmin = $viewer?->role === 'admin';
+
         $comments = PublicationComment::query()
             ->with('user.profile')
             ->where('publication_id', $publication->id)
@@ -185,6 +189,7 @@ class PublicationController extends Controller
                     'name' => $comment->user?->name,
                     'initials' => $comment->user?->profile?->initials ?? 'RD',
                 ],
+                'canDelete' => $viewerId !== null && ($viewerIsAdmin || $comment->user_id === $viewerId),
             ])
             ->values();
 
@@ -211,8 +216,34 @@ class PublicationController extends Controller
                 'body' => $comment->body,
                 'parentId' => $comment->parent_id,
                 'createdAt' => $comment->created_at?->toISOString(),
+                'canDelete' => true,
             ],
         ], 201);
+    }
+
+    public function destroyComment(Request $request, string $publicationRef, string $commentId): JsonResponse
+    {
+        $publication = $this->resolvePublication($publicationRef);
+        $comment = PublicationComment::query()
+            ->where('publication_id', $publication->id)
+            ->findOrFail($commentId);
+
+        $actor = $request->user();
+        $isOwner = $comment->user_id === $actor->id;
+        $isAdmin = $actor->role === 'admin';
+        abort_unless($isOwner || $isAdmin, 403);
+
+        $comment->delete();
+
+        $publication->comments_count = PublicationComment::query()
+            ->where('publication_id', $publication->id)
+            ->count();
+        $publication->save();
+
+        return response()->json([
+            'deleted' => true,
+            'commentId' => $comment->id,
+        ]);
     }
 
     public function like(Request $request, string $publicationRef): JsonResponse
