@@ -55,6 +55,7 @@ Esta documentacao registra a base inicial da API Laravel do Republica do Direito
 - Upload de avatar com tratamento explicito para falhas de CDN, retornando erro HTTP `503` com mensagem JSON em vez de `500` generico.
 - Seeds iniciais para `admin@admin.com` e `editor@admin.com`.
 - Seed dedicado de desenvolvimento disponivel via comando customizado `php artisan app:seed-development` (opcoes: `--users=` e `--fresh`) para gerar massa de teste sem depender do fluxo padrao `db:seed`.
+- Seeder de desenvolvimento agora faz upsert do arquivo base por `external_file_id` com `withTrashed()`, evitando violacao de unicidade em reexecucoes quando o registro ja existe (inclusive soft-deletado).
 
 ## Validacao recomendada
 

@@ -181,18 +181,30 @@ class DevelopmentSeeder extends Seeder
 
     private function upsertDevelopmentImageFile(): File
     {
-        return File::query()->updateOrCreate(
-            ['id' => self::DEV_IMAGE_FILE_ID],
-            [
-                'success' => true,
-                'external_file_id' => self::DEV_IMAGE_EXTERNAL_ID,
-                'original_filename' => self::DEV_IMAGE_FILENAME,
-                'public_url' => self::DEV_IMAGE_PUBLIC_URL,
-                'mime_type' => self::DEV_IMAGE_MIME,
-                'size' => self::DEV_IMAGE_SIZE,
-                'is_public' => true,
-                'is_converted' => true,
-            ],
-        );
+        $file = File::query()
+            ->withTrashed()
+            ->firstOrNew(['external_file_id' => self::DEV_IMAGE_EXTERNAL_ID]);
+
+        if (! $file->exists) {
+            $file->id = self::DEV_IMAGE_FILE_ID;
+        }
+
+        $file->fill([
+            'success' => true,
+            'original_filename' => self::DEV_IMAGE_FILENAME,
+            'public_url' => self::DEV_IMAGE_PUBLIC_URL,
+            'mime_type' => self::DEV_IMAGE_MIME,
+            'size' => self::DEV_IMAGE_SIZE,
+            'is_public' => true,
+            'is_converted' => true,
+        ]);
+
+        if ($file->trashed()) {
+            $file->restore();
+        }
+
+        $file->save();
+
+        return $file;
     }
 }
