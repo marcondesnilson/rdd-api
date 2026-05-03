@@ -6,8 +6,11 @@ use App\Models\File;
 use App\Models\Publication;
 use App\Models\PublicationComment;
 use App\Models\PublicationFile;
+use App\Models\Tag;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -26,8 +29,9 @@ class DevelopmentSeeder extends Seeder
      */
     public function run(int $usersCount = 10): void
     {
-        $usersCount = max(3, $usersCount);
+        $usersCount = max(20, $usersCount);
         $imageFile = $this->upsertDevelopmentImageFile();
+        $devImageUrl = $this->resolveDevImageUrl();
 
         $admin = $this->upsertUser(
             name: 'Administrador DEV',
@@ -67,88 +71,39 @@ class DevelopmentSeeder extends Seeder
             ));
         }
 
-        $authors = collect([$admin, $editor])->merge($members->take(6));
+        $users = collect([$admin, $editor])->merge($members)->values();
+        $tags = $this->upsertTags();
+        $this->cleanupPreviousDevelopmentPublications();
 
-        $publicationIds = [];
-        foreach ($authors as $index => $author) {
-            $slug = sprintf('dev-publicacao-%02d', $index + 1);
-            $publication = Publication::query()->updateOrCreate(
-                ['slug' => $slug],
-                [
-                    'user_id' => $author->id,
-                    'post_type' => 'publication',
-                    'content_type' => 'text',
-                    'title' => fake()->sentence(8),
-                    'excerpt' => fake()->sentence(20),
-                    'content' => fake()->paragraphs(4, true),
-                    'tag' => fake()->randomElement(['Direito Civil', 'Constitucional', 'Tributário']),
-                    'cover_url' => self::DEV_IMAGE_PUBLIC_URL,
-                    'status' => 'published',
-                    'published_at' => now()->subDays($index),
-                ],
-            );
+        $longPublicationsCount = max(24, $usersCount * 4);
+        $timelinePublicationsCount = max(80, $usersCount * 10);
 
-            PublicationFile::query()->updateOrCreate(
-                [
-                    'publication_id' => $publication->id,
-                    'file_id' => $imageFile->id,
-                ],
-                [
-                    'kind' => 'cover',
-                    'sort_order' => 0,
-                ],
-            );
+        $longPublications = $this->seedPublications(
+            users: $users,
+            tags: $tags,
+            imageFile: $imageFile,
+            devImageUrl: $devImageUrl,
+            count: $longPublicationsCount,
+            postType: 'publication',
+        );
 
-            $publicationIds[] = $publication->id;
-        }
+        $timelinePublications = $this->seedPublications(
+            users: $users,
+            tags: $tags,
+            imageFile: $imageFile,
+            devImageUrl: $devImageUrl,
+            count: $timelinePublicationsCount,
+            postType: 'timeline',
+        );
 
-        foreach ($publicationIds as $publicationIndex => $publicationId) {
-            foreach ($members->take(3) as $offset => $member) {
-                $fingerprint = sprintf('dev-comment-%02d-%02d', $publicationIndex + 1, $offset + 1);
-                $exists = PublicationComment::query()
-                    ->where('publication_id', $publicationId)
-                    ->where('body', 'like', $fingerprint.'%')
-                    ->exists();
+        $allPublications = $longPublications->merge($timelinePublications)->values();
 
-                if (! $exists) {
-                    PublicationComment::query()->create([
-                        'publication_id' => $publicationId,
-                        'user_id' => $member->id,
-                        'body' => $fingerprint.' - '.fake()->sentence(12),
-                    ]);
-                }
-
-                DB::table('publication_likes')->insertOrIgnore([
-                    'publication_id' => $publicationId,
-                    'user_id' => $member->id,
-                    'created_at' => now(),
-                    'deleted_at' => null,
-                ]);
-            }
-        }
-
-        foreach ($members->take(5) as $follower) {
-            DB::table('user_follows')->insertOrIgnore([
-                'follower_id' => $follower->id,
-                'followee_id' => $admin->id,
-                'created_at' => now(),
-                'deleted_at' => null,
-            ]);
-        }
-
-        Publication::query()
-            ->whereIn('id', $publicationIds)
-            ->get()
-            ->each(function (Publication $publication): void {
-                $publication->likes_count = DB::table('publication_likes')
-                    ->where('publication_id', $publication->id)
-                    ->whereNull('deleted_at')
-                    ->count();
-                $publication->comments_count = PublicationComment::query()
-                    ->where('publication_id', $publication->id)
-                    ->count();
-                $publication->save();
-            });
+        $this->seedComments($allPublications, $users);
+        $this->seedLikes($allPublications, $users);
+        $this->seedSaves($allPublications, $users);
+        $this->seedViews($allPublications, $users);
+        $this->seedFollows($users);
+        $this->refreshAggregates($allPublications);
     }
 
     private function upsertUser(
@@ -181,6 +136,8 @@ class DevelopmentSeeder extends Seeder
 
     private function upsertDevelopmentImageFile(): File
     {
+        $devImageUrl = $this->resolveDevImageUrl();
+
         $file = File::query()
             ->withTrashed()
             ->firstOrNew(['external_file_id' => self::DEV_IMAGE_EXTERNAL_ID]);
@@ -192,7 +149,7 @@ class DevelopmentSeeder extends Seeder
         $file->fill([
             'success' => true,
             'original_filename' => self::DEV_IMAGE_FILENAME,
-            'public_url' => self::DEV_IMAGE_PUBLIC_URL,
+            'public_url' => $devImageUrl,
             'mime_type' => self::DEV_IMAGE_MIME,
             'size' => self::DEV_IMAGE_SIZE,
             'is_public' => true,
@@ -206,5 +163,243 @@ class DevelopmentSeeder extends Seeder
         $file->save();
 
         return $file;
+    }
+
+    private function cleanupPreviousDevelopmentPublications(): void
+    {
+        $developmentPublicationIds = Publication::query()
+            ->withTrashed()
+            ->where('slug', 'like', 'dev-%')
+            ->pluck('id');
+
+        if ($developmentPublicationIds->isEmpty()) {
+            return;
+        }
+
+        DB::table('publication_views')->whereIn('publication_id', $developmentPublicationIds)->delete();
+        DB::table('publication_saves')->whereIn('publication_id', $developmentPublicationIds)->delete();
+        DB::table('publication_likes')->whereIn('publication_id', $developmentPublicationIds)->delete();
+        DB::table('publication_comments')->whereIn('publication_id', $developmentPublicationIds)->delete();
+        DB::table('publication_files')->whereIn('publication_id', $developmentPublicationIds)->delete();
+        DB::table('publication_tag')->whereIn('publication_id', $developmentPublicationIds)->delete();
+        // `slug` is unique; remove previous DEV records permanently to avoid collisions
+        // when the seeder recreates deterministic `dev-*` slugs.
+        DB::table('publications')->whereIn('id', $developmentPublicationIds)->delete();
+    }
+
+    private function upsertTags(): Collection
+    {
+        $tagNames = [
+            'Direito Civil',
+            'Direito Penal',
+            'Constitucional',
+            'Tributário',
+            'Empresarial',
+            'Trabalhista',
+            'Consumidor',
+            'LGPD',
+            'Processo Civil',
+            'Criminal',
+            'Jurisprudência',
+            'Carreira Jurídica',
+        ];
+
+        return collect($tagNames)
+            ->map(function (string $name): Tag {
+                $slug = Str::slug($name);
+
+                return Tag::query()->firstOrCreate(
+                    ['slug' => $slug !== '' ? $slug : Str::lower((string) Str::ulid())],
+                    ['name' => $name],
+                );
+            })
+            ->values();
+    }
+
+    private function seedPublications(
+        Collection $users,
+        Collection $tags,
+        File $imageFile,
+        string $devImageUrl,
+        int $count,
+        string $postType,
+    ): Collection {
+        $items = collect();
+        $contentTypes = ['text', 'image', 'video', 'link'];
+
+        for ($i = 1; $i <= $count; $i++) {
+            $author = $users->random();
+            $contentType = $contentTypes[array_rand($contentTypes)];
+            $isLong = $postType === 'publication';
+            $slugPrefix = $isLong ? 'dev-publicacao' : 'dev-timeline';
+            $slug = sprintf('%s-%04d', $slugPrefix, $i);
+            $tag = $tags->random();
+            $status = $isLong
+                ? fake()->randomElement(['published', 'published', 'published', 'pending_review', 'draft'])
+                : 'published';
+            $baseDate = CarbonImmutable::now()->subHours(random_int(1, 720));
+            $mediaUrl = in_array($contentType, ['image', 'video', 'link'], true)
+                ? $devImageUrl
+                : null;
+
+            $publication = Publication::query()->create([
+                'user_id' => $author->id,
+                'post_type' => $postType,
+                'content_type' => $contentType,
+                'slug' => $slug,
+                'title' => $isLong ? fake()->sentence(8) : null,
+                'excerpt' => $isLong ? fake()->sentence(20) : null,
+                'content' => $isLong ? fake()->paragraphs(random_int(4, 9), true) : null,
+                'body' => $isLong ? null : fake()->paragraphs(random_int(1, 3), true),
+                'tag' => $tag->name,
+                'cover_url' => $isLong ? $devImageUrl : null,
+                'media_url' => $mediaUrl,
+                'status' => $status,
+                'search_engine_index' => $isLong && $status === 'published',
+                'published_at' => $status === 'published' ? $baseDate : null,
+                'created_at' => $baseDate,
+                'updated_at' => $baseDate,
+            ]);
+
+            $publication->tags()->syncWithoutDetaching(
+                $tags->random(random_int(1, min(3, $tags->count())))->pluck('id')->all()
+            );
+
+            if ($contentType !== 'text') {
+                PublicationFile::query()->create([
+                    'publication_id' => $publication->id,
+                    'file_id' => $imageFile->id,
+                    'kind' => $isLong ? 'cover' : 'image',
+                    'sort_order' => 0,
+                ]);
+            }
+
+            $items->push($publication);
+        }
+
+        return $items;
+    }
+
+    private function resolveDevImageUrl(): string
+    {
+        $baseUrl = rtrim((string) config('services.cdn_upload.base_url'), '/');
+
+        if ($baseUrl === '') {
+            return self::DEV_IMAGE_PUBLIC_URL;
+        }
+
+        return $baseUrl.'/'.ltrim(self::DEV_IMAGE_PUBLIC_URL, '/');
+    }
+
+    private function seedComments(Collection $publications, Collection $users): void
+    {
+        foreach ($publications as $publication) {
+            $commentsCount = random_int(2, 14);
+            $rootComments = collect();
+
+            for ($i = 1; $i <= $commentsCount; $i++) {
+                $commentedAt = CarbonImmutable::parse((string) $publication->created_at)->addMinutes($i * random_int(5, 40));
+                $author = $users->random();
+                $parent = $rootComments->isNotEmpty() && $i % 4 === 0 ? $rootComments->random() : null;
+
+                $comment = PublicationComment::query()->create([
+                    'publication_id' => $publication->id,
+                    'user_id' => $author->id,
+                    'parent_id' => $parent?->id,
+                    'body' => fake()->sentence(random_int(8, 24)),
+                    'created_at' => $commentedAt,
+                    'updated_at' => $commentedAt,
+                ]);
+
+                if ($parent === null) {
+                    $rootComments->push($comment);
+                }
+            }
+        }
+    }
+
+    private function seedLikes(Collection $publications, Collection $users): void
+    {
+        foreach ($publications as $publication) {
+            $likesUsers = $users->shuffle()->take(random_int(3, min(25, $users->count())));
+            foreach ($likesUsers as $likedBy) {
+                DB::table('publication_likes')->insertOrIgnore([
+                    'publication_id' => $publication->id,
+                    'user_id' => $likedBy->id,
+                    'created_at' => CarbonImmutable::parse((string) $publication->created_at)->addMinutes(random_int(1, 600)),
+                    'deleted_at' => null,
+                ]);
+            }
+        }
+    }
+
+    private function seedSaves(Collection $publications, Collection $users): void
+    {
+        foreach ($publications as $publication) {
+            $savedByUsers = $users->shuffle()->take(random_int(1, min(18, $users->count())));
+            foreach ($savedByUsers as $savedBy) {
+                DB::table('publication_saves')->insertOrIgnore([
+                    'publication_id' => $publication->id,
+                    'user_id' => $savedBy->id,
+                    'created_at' => CarbonImmutable::parse((string) $publication->created_at)->addMinutes(random_int(1, 720)),
+                    'deleted_at' => null,
+                ]);
+            }
+        }
+    }
+
+    private function seedViews(Collection $publications, Collection $users): void
+    {
+        foreach ($publications as $publication) {
+            $viewsCount = random_int(8, 60);
+            for ($i = 0; $i < $viewsCount; $i++) {
+                $viewer = $users->random();
+                DB::table('publication_views')->insert([
+                    'id' => Str::lower((string) Str::ulid()),
+                    'publication_id' => $publication->id,
+                    'user_id' => random_int(0, 100) < 80 ? $viewer->id : null,
+                    'ip_address' => fake()->ipv4(),
+                    'user_agent' => fake()->userAgent(),
+                    'viewed_at' => CarbonImmutable::parse((string) $publication->created_at)->addMinutes(random_int(1, 1440)),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ]);
+            }
+        }
+    }
+
+    private function seedFollows(Collection $users): void
+    {
+        foreach ($users as $follower) {
+            $followees = $users
+                ->where('id', '!=', $follower->id)
+                ->shuffle()
+                ->take(random_int(3, min(20, max(3, $users->count() - 1))));
+
+            foreach ($followees as $followee) {
+                DB::table('user_follows')->insertOrIgnore([
+                    'follower_id' => $follower->id,
+                    'followee_id' => $followee->id,
+                    'created_at' => now()->subDays(random_int(0, 60)),
+                    'deleted_at' => null,
+                ]);
+            }
+        }
+    }
+
+    private function refreshAggregates(Collection $publications): void
+    {
+        $publications->each(function (Publication $publication): void {
+            $publication->likes_count = DB::table('publication_likes')
+                ->where('publication_id', $publication->id)
+                ->whereNull('deleted_at')
+                ->count();
+            $publication->comments_count = DB::table('publication_comments')
+                ->where('publication_id', $publication->id)
+                ->whereNull('deleted_at')
+                ->count();
+            $publication->save();
+        });
     }
 }
