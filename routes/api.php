@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminPublicationController;
+use App\Http\Controllers\AdminVerificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PublicationController;
@@ -22,6 +23,7 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::get('/me/dashboard/metrics', [DashboardController::class, 'metrics']);
     Route::get('/me/publications', [PublicationController::class, 'myPublications']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
+    Route::post('/me/verification', [AuthController::class, 'requestVerification']);
     Route::post('/me/avatar', [AuthController::class, 'uploadAvatar']);
     Route::patch('/me/security', [AuthController::class, 'updateSecurity']);
     Route::post('/auth/mfa/verify', [AuthController::class, 'verifyMfa']);
@@ -54,4 +56,6 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::get('/admin/users/{user}/audits', [AdminUserController::class, 'audits']);
     Route::get('/admin/publications', [AdminPublicationController::class, 'index']);
     Route::patch('/admin/publications/{publication:slug}/status', [AdminPublicationController::class, 'updateStatus']);
+    Route::get('/admin/verifications', [AdminVerificationController::class, 'index']);
+    Route::patch('/admin/verifications/{verification}/review', [AdminVerificationController::class, 'review']);
 });

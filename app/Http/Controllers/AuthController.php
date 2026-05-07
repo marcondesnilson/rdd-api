@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RequestVerificationRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdateAccountSecurityRequest;
 use App\Http\Requests\UpdateMeRequest;
@@ -130,6 +131,30 @@ class AuthController extends Controller
 
         $this->auditTrail->record($request, 'account.updated', $user, metadata: [
             'fields' => array_keys($data),
+        ]);
+
+        return response()->json([
+            'user' => SessionUserResource::make($user->refresh()->load(['profile', 'preferences', 'roleRecord', 'verification', 'latestLoginLog', 'mfaMethods'])),
+        ]);
+    }
+
+    public function requestVerification(RequestVerificationRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+
+        $user->verification()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'status' => 'pending',
+                'requested_role' => $data['requestedRole'],
+                'document' => $data['document'],
+                'submitted_at' => now(),
+            ],
+        );
+
+        $this->auditTrail->record($request, 'account.verification_requested', $user, metadata: [
+            'requestedRole' => $data['requestedRole'],
         ]);
 
         return response()->json([
