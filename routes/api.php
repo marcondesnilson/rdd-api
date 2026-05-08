@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\TimelinePostController;
+use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\RecordAuthenticatedAccess;
 use Illuminate\Support\Facades\Route;
 
@@ -47,15 +48,17 @@ Route::middleware(['auth:sanctum', RecordAuthenticatedAccess::class])->group(fun
     Route::post('/timeline/posts', [TimelinePostController::class, 'store']);
     Route::get('/profiles/{user}/timeline-posts', [TimelinePostController::class, 'profileTimeline']);
 
-    Route::get('/admin/users', [AdminUserController::class, 'index']);
-    Route::post('/admin/users', [AdminUserController::class, 'store']);
-    Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
-    Route::patch('/admin/users/{user}', [AdminUserController::class, 'update']);
-    Route::get('/admin/users/{user}/sessions', [AdminUserController::class, 'sessions']);
-    Route::get('/admin/users/{user}/logs', [AdminUserController::class, 'logs']);
-    Route::get('/admin/users/{user}/audits', [AdminUserController::class, 'audits']);
-    Route::get('/admin/publications', [AdminPublicationController::class, 'index']);
-    Route::patch('/admin/publications/{publication:slug}/status', [AdminPublicationController::class, 'updateStatus']);
-    Route::get('/admin/verifications', [AdminVerificationController::class, 'index']);
-    Route::patch('/admin/verifications/{verification}/review', [AdminVerificationController::class, 'review']);
+    Route::middleware(EnsureAdmin::class)->prefix('/admin')->group(function (): void {
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::post('/users', [AdminUserController::class, 'store']);
+        Route::get('/users/{user}', [AdminUserController::class, 'show']);
+        Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+        Route::get('/users/{user}/sessions', [AdminUserController::class, 'sessions']);
+        Route::get('/users/{user}/logs', [AdminUserController::class, 'logs']);
+        Route::get('/users/{user}/audits', [AdminUserController::class, 'audits']);
+        Route::get('/publications', [AdminPublicationController::class, 'index']);
+        Route::patch('/publications/{publication:slug}/status', [AdminPublicationController::class, 'updateStatus']);
+        Route::get('/verifications', [AdminVerificationController::class, 'index']);
+        Route::patch('/verifications/{verification}/review', [AdminVerificationController::class, 'review']);
+    });
 });

@@ -9,7 +9,7 @@ class ReviewUserVerificationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()?->role, ['admin', 'editor'], true);
+        return $this->user()?->role === 'admin';
     }
 
     /**

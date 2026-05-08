@@ -220,7 +220,7 @@ class AdminUserController extends Controller
 
     private function authorizeAdminAccess(Request $request): void
     {
-        abort_unless(in_array($request->user()?->role, ['admin', 'editor'], true), 403);
+        abort_unless($request->user()?->role === 'admin', 403);
     }
 
     private function initialsFor(string $name): string

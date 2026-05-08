@@ -47,9 +47,9 @@ Rotas atuais:
 - `GET /timeline/posts`: feed de postagens curtas (somente autenticado).
 - `POST /timeline/posts`: publica texto curto na timeline (somente autenticado).
 - `GET /profiles/{id}/timeline-posts`: lista timeline de um perfil (somente autenticado).
-- `GET /admin/users`: lista usuarios para `admin` e `editor`.
-- `POST /admin/users`: cria usuario para `admin` e `editor`.
-- `GET /admin/users/{id}`: detalha um usuario para `admin` e `editor`.
+- `GET /admin/users`: lista usuarios para `admin`.
+- `POST /admin/users`: cria usuario para `admin`.
+- `GET /admin/users/{id}`: detalha um usuario para `admin`.
 - `PATCH /admin/users/{id}`: atualiza nome, email, telefone, papel e status administrativo do usuario.
 - `GET /admin/users/{id}/sessions`: lista sessoes Sanctum do usuario com IP, navegador e datas.
 - `GET /admin/users/{id}/logs`: lista os ultimos eventos de auditoria do usuario.
